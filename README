@@ -1,0 +1,6 @@
+Fungo
+
+Fun Unified Game library for te gO Programming language. Yes, that's a backgronym. :)
+Intends to wrap SDL, SDL_ttf, SDL_mixer and whatever else is needed to make 2D games 
+in Go into one unified, fun to use package.
+ 
