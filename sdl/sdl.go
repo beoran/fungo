@@ -19,7 +19,7 @@ import "runtime"
 // Allocates a string with the given byte length
 // don't forget a call to defer s.free() ! 
 func cstrNew(size int) (* C.char) {
-  (*C.char)(unsafe.Pointer(C.calloc(size, 1)))  
+  return (*C.char)(unsafe.Pointer(C.malloc(C.size_t(size))))  
 }
 
 // free is a method on C char * strings to method to free the associated memory 
@@ -54,8 +54,8 @@ const (
 // APPACTIVE.  If APPACTIVE is set, then the user is able to
 // see your application, otherwise it has been iconified or disabled.
 ///
-func GetAppState() (uint8) { 
-  return uint8(C.SDL_GetAppState())
+func GetAppState() (C.Uint8) { 
+  return C.Uint8(C.SDL_GetAppState())
 }
 
 
@@ -69,7 +69,7 @@ type AudioSpec struct {
 	Uint8  silence;		// Audio buffer silence value (calculated) 
 	Uint16 samples;		// Audio buffer size in samples (power of 2) 
 	Uint16 padding;		// Necessary for some compile environments 
-	Uint32 size;		// Audio buffer size in bytes (calculated) 
+	C.Uint32 size;		// Audio buffer size in bytes (calculated) 
 	// This function is called when the audio device needs more data.
 	   'stream' is a pointer to the audio data buffer
 	   'len' is the length of that buffer in bytes.
@@ -80,41 +80,40 @@ type AudioSpec struct {
 } SDL_AudioSpec;
 */
 // Audio format flags (defaults to LSB byte order) 
-const { 
-  AUDIO_U8	= C.AUDIO_U8		
-  AUDIO_U16LSB	= C.AUDIO_U16LSB
-  AUDIO_U16MSB	= C.AUDIO_U16LSB
-  AUDIO_U16SYS  = C.AUDIO_U16SYS
-  AUDIO_S16LSB	= C.AUDIO_S16LSB
-  AUDIO_S16MSB	= C.AUDIO_S16LSB
-  AUDIO_S16SYS  = C.AUDIO_S16SYS
-  AUDIO_S16  	= C.AUDIO_S16
-  AUDIO_U16  	= C.AUDIO_U16
-  BYTEORDER 	= C.SDL_BYTEORDER  
-  LIL_ENDIAN	= C.SDL_LIL_ENDIAN
-}
+const ( 
+  FAUDIO_U8	    = C.AUDIO_U8
+  FAUDIO_U16LSB	= C.AUDIO_U16LSB
+  FAUDIO_U16MSB	= C.AUDIO_U16LSB
+  // FAUDIO_U16SYS  = C.AUDIO_U16SYS
+  FAUDIO_S16LSB	= C.AUDIO_S16LSB
+  FAUDIO_S16MSB	= C.AUDIO_S16LSB
+  // FAUDIO_S16SYS  = C.AUDIO_S16SYS
+  // FAUDIO_S16  	  = C.AUDIO_S16
+  // FAUDIO_U16  	  = C.AUDIO_U16
+  BYTEORDER 	  = C.SDL_BYTEORDER  
+  LIL_ENDIAN	  = C.SDL_LIL_ENDIAN
+)
 
 
 // This function fills the given character buffer with the name of the
 // current audio driver, and returns a pointer to it if the audio driver has
-// been initialized.  It returns nil if no driver has been initialized.
+// been initialized.  It returns "" if no driver has been initialized.
 func AudioDriverName() string {
   maxlen  := 255
-  namebuf := cstrNew(maxlen) ; defer namebuf.free
-  res 	  := C.SDL_AudioDriverName(namebuf, C.int(maxlen));
-  if (res == nil) { return nil } 
-  return string(namebuf)
+  namebuf := cstrNew(maxlen) ; defer namebuf.free()
+  res 	  := C.SDL_AudioDriverName(namebuf, C.int(maxlen))
+  if (res == nil) { return "" } 
+  return C.GoString(namebuf)
 }
 
-func AudioInit(string drivername) (int) {
-  driver_name = cstr(drivername) ; defer driver_name.free()
-  res 	      := C.SDL_AudioInit(driver_name);
+func AudioInit(drivername string) (int) {
+  driver_name := cstr(drivername) ; defer driver_name.free()
+  res 	      := C.SDL_AudioInit(driver_name)
   return int(res)
 }
 
 func AudioQuit() {
-  res 	      := C.SDL_Quit();
-  return int(res)
+  C.SDL_AudioQuit()  
 }
 
 // This function opens the audio device with the desired parameters, and
@@ -157,8 +156,9 @@ func AudioQuit() {
 // may modify the requested size of the audio buffer, you should allocate
 // any local mixing buffers after you open the audio device.
 ///
-func OpenAudio(desired, obtained  *C.SDL_Audiospec) int {
+func OpenAudio(desired, obtained  *C.SDL_AudioSpec) int {
   res := C.SDL_OpenAudio(desired, obtained)
+  return int(res)
 }
 
 
@@ -169,11 +169,11 @@ func OpenAudio(desired, obtained  *C.SDL_Audiospec) int {
 type AudioStatus int
 
 
-const {
+const (
 	SDL_AUDIO_STOPPED = AudioStatus(iota)
 	SDL_AUDIO_PLAYING
 	SDL_AUDIO_PAUSED
-} 
+)
 
 func GetAudioStatus() AudioStatus {
   return AudioStatus(C.SDL_GetAudioStatus());  
@@ -207,9 +207,11 @@ func PauseAudio(pause_on bool) {
 // This function returns NULL and sets the SDL error message if the 
 // wave file cannot be opened, uses an unknown data format, or is 
 // corrupt.  Currently raw and MS-ADPCM WAVE files are supported.
-func LoadWAV_RW(src * C.SDL_RWops, freesrc int, spec * C.SDL_AudioSpec, 
-  audio_buf **C.uint8, audio_len *C.uint32) * C.SDL_Audiospec  { 
-  return C.SDL_LoadWAV_RW(src, freesrc, spec, audio_buf, audio_len)
+func LoadWAV_RW(src * C.SDL_RWops, freesrc bool, spec * C.SDL_AudioSpec, 
+  audio_buf **C.Uint8, audio_len *C.Uint32) * C.SDL_AudioSpec  {
+  free_src := C.int(0)
+  if freesrc { free_src = C.int(1) }  
+  return C.SDL_LoadWAV_RW(src, free_src, spec, audio_buf, audio_len)
 }  
 
 // Compatibility convenience function -- loads a WAV from a file */
@@ -220,7 +222,7 @@ func LoadWav() {
 
 //
 // This function frees data previously allocated with SDL_LoadWAV_RW()
-func FreeWav(audio_buf *C.uint8) { 
+func FreeWav(audio_buf *C.Uint8) { 
   C.SDL_FreeWAV(audio_buf)
 }  
 
@@ -230,9 +232,9 @@ func FreeWav(audio_buf *C.uint8) {
 // by SDL_ConvertAudio() to convert a buffer of audio data from one format
 // to the other.
 // This function returns 0, or -1 if there was an error.
-func BuildAudioCVT(cvt * C.AudioCVT, 
-  src_format C.uint16, src_channels C.uint8, src_rate int, 
-  dst_format C.uint16, dst_channels C.uint8, dst_rate int) (C.int) {
+func BuildAudioCVT(cvt * C.SDL_AudioCVT, 
+  src_format C.Uint16, src_channels C.Uint8, src_rate C.int, 
+  dst_format C.Uint16, dst_channels C.Uint8, dst_rate C.int) (C.int) {
   return C.SDL_BuildAudioCVT(cvt, src_format, src_channels, src_rate,
 		dst_format, dst_channels, dst_rate);
 		
@@ -246,8 +248,8 @@ func BuildAudioCVT(cvt * C.AudioCVT,
 // cvt->buf should be allocated after the cvt structure is initialized by
 // SDL_BuildAudioCVT(), and should be cvt->len*cvt->len_mult bytes long.
 ///
-func ConvertAudio(cvt * C.AudioCVT) (C.int) {  
-    C.SDL_ConvertAudio(cvt)
+func ConvertAudio(cvt * C.SDL_AudioCVT) (C.int) {  
+    return C.SDL_ConvertAudio(cvt)
 }    
 
 // This takes two audio buffers of the playing audio format and mixes
@@ -255,9 +257,9 @@ func ConvertAudio(cvt * C.AudioCVT) (C.int) {
 // The volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
 // for full audio volume.  Note this does not change hardware volume.
 // This is provided for convenience -- you can mix your own audio data.
-const MIX_MAXVLUME = SDL_MIX_MAXVOLUME 128
+const MIX_MAXVOLUME = C.SDL_MIX_MAXVOLUME
 
-func MixAudio(dst, src C.uint8, length C.uint32, volume C.int) { 
+func MixAudio(dst, src * C.Uint8, length C.Uint32, volume C.int) { 
   C.SDL_MixAudio(dst, src, length, volume)
 }
 

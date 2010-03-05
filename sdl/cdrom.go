@@ -2,7 +2,7 @@ package sdl
 
 // #include <SDL.h>
 import "C"
-import "unsafe" 
+// import "unsafe" 
 
 
 
@@ -30,8 +30,8 @@ const (
 
 
 /* Given a status, returns true if there's a disk in the drive */
-func CD_INDRIVE(status) (bool) 
-  return ((int)(status) > 0)
+func CD_INDRIVE(status CDstatus) (bool) {
+  return (int(status) > 0)
 }
 
 /*
@@ -67,7 +67,7 @@ func FRAMES_TO_MSF(value int) (m, s, f int) {
   return 
 }  
   
-func MSF_TO_FRAMES(m, s, f int) {
+func MSF_TO_FRAMES(m, s, f int) (int) {
   return ((m)*60*CD_FPS+(s)*CD_FPS+(f))
 }
 
@@ -75,7 +75,7 @@ func MSF_TO_FRAMES(m, s, f int) {
 // Returns the number of CD-ROM drives on the system, or -1 if
 // SDL_Init() has not been called with the SDL_INIT_CDROM flag.
 func CDNumDrives() int { 
-  int(C.SDL_CDNumDrives(void))
+  return int(C.SDL_CDNumDrives())
 }
 
 // Returns a human-readable, system-dependent identifier for the CD-ROM.
@@ -120,40 +120,37 @@ func CDStatus(cdrom * C.SDL_CD)  (CDstatus) {
 func CDPlayTracks(cdrom * C.SDL_CD, start_track, start_frame, 
                   ntracks, nframes int) (int) {           
   return int(C.SDL_CDPlayTracks(cdrom, C.int(start_track), C.int(start_frame),
-                               C.int(ntracks), C.int(nframes));
+                               C.int(ntracks), C.int(nframes)));
 }
 
 // Play the given CD starting at 'start' frame for 'length' frames.
 // It returns 0, or -1 if there was an error.
-CDPlay(cdrom * C.SDL_CD, start, length) (int) {
-  return int(C.SDL_CDPlay(cdrom, C.int(start), C.int(length)); 
+func CDPlay(cdrom * C.SDL_CD, start, length int) (int) {
+  return int(C.SDL_CDPlay(cdrom, C.int(start), C.int(length))); 
 } 
 
 /* Pause play -- returns 0, or -1 on error */
-CDPause(cdrom * C.SDL_CD) (int) {
+func CDPause(cdrom * C.SDL_CD) (int) {
   return int(C.SDL_CDPause(cdrom))
 }  
 
 /* Resume play -- returns 0, or -1 on error */
-CDResume(cdrom * C.SDL_CD) (int) {
+func CDResume(cdrom * C.SDL_CD) (int) {
   return int(C.SDL_CDResume(cdrom))
 }  
 
-
-extern DECLSPEC int SDLCALL SDL_CDResume(SDL_CD *cdrom);
-
 /* Stop play -- returns 0, or -1 on error */
-CDStop(cdrom * C.SDL_CD) (int) {
+func CDStop(cdrom * C.SDL_CD) (int) {
   return int(C.SDL_CDStop(cdrom))
 }  
 
 /* Eject CD-ROM -- returns 0, or -1 on error */
-CDEject(cdrom * C.SDL_CD) (int) {
+func CDEject(cdrom * C.SDL_CD) (int) {
   return int(C.SDL_CDEject(cdrom))
 }  
 
 /* Closes the handle for the CD-ROM drive */
-CDClose(cdrom * C.SDL_CD) {
+func CDClose(cdrom * C.SDL_CD) {
   C.SDL_CDClose(cdrom)
 }  
 
