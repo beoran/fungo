@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 import "os"
+import "time"
 import "fungo/sdl"
 // import "tamias"
 // import "fungo/sdl"
@@ -17,6 +18,10 @@ type testresults struct {
 }
 
 var suite = testresults{0,0,0}
+
+func sleep(secs int) { 
+  time.Sleep(int64(secs) * 1000000000);
+}
 
 func (cond testbool) should(err string, args ...) {
   assert(bool(cond), err, args)
@@ -47,8 +52,6 @@ func TestResults() {
 }
 
 // This test doesn't score anything, just prints results, which should print.
-// Mysteriously stopped working (undefined symbol in shared lib)
-/*
 func TestCpuinfo() {
   fmt.Println("CPU Features:")
   fmt.Println("SSE:", sdl.HasSSE())
@@ -60,19 +63,64 @@ func TestCpuinfo() {
   fmt.Println("MMXExt:", sdl.HasMMXExt())
   fmt.Println("AltiVec:", sdl.HasAltiVec())
 }
-*/
+
+
+func TestInit() {
+  sdl.Init(sdl.INIT_EVERYTHING)
+  assert(sdl.Initialized(sdl.INIT_JOYSTICK & sdl.INIT_AUDIO), 
+    "SDL Init everything initializeds Joystick aslo" )
+  sdl.Quit()
+  assert(!sdl.Initialized(sdl.INIT_JOYSTICK), 
+    "SDL Quit works correctly") 
+  sdl.Init(sdl.INIT_EVERYTHING)
+  assert(sdl.Initialized(sdl.INIT_AUDIO), 
+    "SDL Init everything initializes Audio aslo" )
+  sdl.Quit()
+}
+
+func TestCD() {
+  sdl.Init(sdl.INIT_EVERYTHING) ; defer sdl.Quit()
+  fmt.Println("Number of CD Drives:", sdl.CDNumDrives())
+  cd := sdl.OpenCD(0)
+  assert(cd != nil, "Can open CD drive.")    
+  if cd == nil { return }
+  ntrack := cd.CountTracks()
+  fmt.Printf("CD Status: %d, Tracks: %d. (%s)\n", int(cd.Status()), ntrack,
+  cd.String())   
+  for i := 0 ; i < ntrack; i++ {   
+    track := cd.Track(i);
+    if i == 0 {
+      // Note: you won't hear music unles your CD drive has been connected 
+      // with an analog audio cable to the motherboard. The chance is high, 
+      // in contemporary PC's, that it hasnt been correctly conected, and
+      // that no sound will be heard.
+      // This functonality iseems to be slated to disappear in SDL1.3, 
+      // but I'm including it because who knows who might need it.
+      cd.PlayTracks(i, track.Offset(), 1, track.Length())
+      // sleep(10)
+      cd.Stop()
+    }    
+    fmt.Printf("Track %d: %d,  %d\n", i, track.Offset(), track.Length())
+  }  
+  // cd.Eject()    
+  cd.Close()  
+}
 
 func TestError() {
   sdl.Error(sdl.EFREAD)
   err := sdl.GetError()
-  fmt.Println(err)
+  exp := "Error reading from datastream"
+  assert(err == exp, "Can fetch correct error message") 
+  // fmt.Println(err)
   sdl.ClearError()
-  err2 := sdl.GetError()
-  fmt.Println(err2)
+  // err2 := sdl.GetError()
+  // fmt.Println(err2)
 }
 
 func main()	{
-  // TestCpuinfo()
+  TestCpuinfo()
+  TestInit()
+  TestCD()
   TestError()
   TestResults()
 }

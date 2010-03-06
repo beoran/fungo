@@ -4,7 +4,7 @@ package sdl
 import "C"
 // import "unsafe" 
 
-
+// static int TrackType(SDL_CDtrack * track) { return track->type; } 
 
 /* In order to use these functions, SDL_Init() must have been called
    with the SDL_INIT_CDROM flag.  This causes SDL to scan the system
@@ -25,7 +25,6 @@ const (
   CD_PLAYING
   CD_PAUSED
   CD_ERROR      = CDstatus(-1)
-
 )
 
 
@@ -153,5 +152,139 @@ func CDEject(cdrom * C.SDL_CD) (int) {
 func CDClose(cdrom * C.SDL_CD) {
   C.SDL_CDClose(cdrom)
 }  
+
+/* Go-ish wrappers: */
+type CD struct {
+  cd * C.SDL_CD
+}
+
+type Track struct { 
+  track * C.SDL_CDtrack
+}
+
+func OpenCD(id int) * CD {
+  max   := CDNumDrives();
+  if id > max { return nil }
+  cd 	:= new(CD)
+  // cd.cd  = nil
+  cd.cd  = CDOpen(id) 
+  cd.Status() // Call status so it's properly initialized
+  return cd
+}
+
+func (cd * CD) Status() (CDstatus) {
+  if cd.cd != nil {
+    return CDStatus(cd.cd)
+  }
+  return CD_ERROR
+}
+
+func (cd * CD) InDrive() (bool) {
+  if cd.cd != nil {
+    return CD_INDRIVE(cd.Status())
+  }
+  return false
+}
+
+
+func (cd * CD) String() (string) {
+  if cd.cd != nil {
+    return CDName(int(cd.cd.id))
+  }
+  return "Uninitialised or Closed CD Drive."
+}
+
+
+func (cd * CD) Close() {
+  if cd.cd != nil {
+    CDClose(cd.cd)
+    cd.cd = nil
+  }
+}
+
+func (cd * CD) Resume() {
+  if cd.cd != nil {
+    CDResume(cd.cd)
+  }
+}
+
+func (cd * CD) Play(start, length int) {
+  if cd.cd != nil {
+    CDPlay(cd.cd, start, length)
+  }
+}
+
+func (cd * CD) Eject() {
+  if cd.cd != nil {
+    CDEject(cd.cd)
+  }
+}
+
+
+func (cd * CD) Stop() {
+  if cd.cd != nil {
+    CDStop(cd.cd)
+  }
+}
+
+func (cd * CD) CountTracks() int {
+  if cd.cd != nil {
+    return int(cd.cd.numtracks)
+  }
+  return -1
+}
+
+func (cd * CD) CurrentTrack() int {
+  if cd.cd != nil {
+    return int(cd.cd.cur_track)
+  }
+  return -1
+}
+
+func (cd * CD) CurrentFrame() int {
+  if cd.cd != nil {
+    return int(cd.cd.cur_frame)
+  }
+  return -1
+}
+
+func (cd * CD) PlayTracks(start_track, start_frame, ntracks, nframes int) {
+  if cd.cd == nil { return}
+  CDPlayTracks(cd.cd, start_track, start_frame, ntracks, nframes)
+}
+
+func (cd * CD) Track(tracknr int) (* Track) {
+  if cd.cd != nil {
+    if tracknr < 0 || tracknr > cd.CountTracks() { return nil }  
+    track 	:= new(Track)    
+    track.track  = &cd.cd.track[tracknr]
+    return track
+  }
+  return nil
+}
+
+func (track * Track) ID() int { 
+  if track.track == nil { return -1 }
+  return int(track.track.id)
+}
+
+/*
+func (track * Track) Type() int { 
+  if track.track == nil { return -1 }
+  return int(C.TrackType(track.track))
+}
+*/
+
+func (track * Track) Length() int { 
+  if track.track == nil { return -1 }
+  return int(track.track.length)
+}
+
+func (track * Track) Offset() int { 
+  if track.track == nil { return -1 }
+  return int(track.track.offset)
+}
+
+
 
 
