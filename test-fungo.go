@@ -112,11 +112,11 @@ func TestJoystick() {
   if len(joysticks) > 0 {  
     fmt.Println(joysticks)
     js0 := joysticks[0]
-    for { 
+    //for { 
       sdl.JoystickUpdate()
       fmt.Println(js0.Button(0), js0.Button(1), js0.Button(2), js0.Button(3))
-      if js0.Button(0) != 0 { break }
-    }
+    // if js0.Button(0) != 0 { break }
+    //}
   }
 }
 
