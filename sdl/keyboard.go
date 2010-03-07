@@ -1,6 +1,6 @@
-/*
-* Bindings to SDL_keysym and SDL_keyboard
-*/
+//
+// Bindings to SDL_keysym and SDL_keyboard
+//
 package sdl
 
 /* 
@@ -9,14 +9,14 @@ package sdl
 */
 import "C"
 
-/* What we really want is a mapping of every raw key on the keyboard.
-   To support international keyboards we use the range 0xA1 - 0xFF
-   as international virtual keycodes.  We'll follow in the footsteps of X11...
-   The names of the keys
- */
+// What we really want is a mapping of every raw key on the keyboard.
+// To support international keyboards we use the range 0xA1 - 0xFF
+// as international virtual keycodes.  We'll follow in the footsteps of X11...
+// The names of the keys
+//
  
 const (
-	/* The keyboard syms have been cleverly chosen to map to ASCII */
+// The keyboard syms have been cleverly chosen to map to ASCII 
 K_UNKNOWN		= 0
 K_FIRST			= 0
 K_BACKSPACE		= 8
@@ -57,9 +57,7 @@ K_EQUALS		= 61
 K_GREATER		= 62
 K_QUESTION		= 63
 K_AT			= 64
-	/* 
-	   Skip uppercase letters
-	 */
+	//  Skip uppercase letters
 K_LEFTBRACKET	= 91
 K_BACKSLASH		= 92
 K_RIGHTBRACKET	= 93
@@ -93,10 +91,10 @@ K_x			= 120
 K_y			= 121
 K_z			= 122
 K_DELETE		= 127
-/* End of ASCII mapped keysyms */
+// End of ASCII mapped keysyms 
 
-/* International keyboard syms */
-K_WORLD_0		= 160		/* 0xA0 */
+// International keyboard syms 
+K_WORLD_0		= 160		// 0xA0 
 K_WORLD_1		= 161
 K_WORLD_2		= 162
 K_WORLD_3		= 163
@@ -191,9 +189,9 @@ K_WORLD_91		= 251
 K_WORLD_92		= 252
 K_WORLD_93		= 253
 K_WORLD_94		= 254
-K_WORLD_95		= 255		/* 0xFF */
+K_WORLD_95		= 255		// 0xFF 
 
-/* Numeric keypad */
+// Numeric keypad 
 K_KP0		= 256
 K_KP1		= 257
 K_KP2		= 258
@@ -212,7 +210,7 @@ K_KP_PLUS		= 270
 K_KP_ENTER		= 271
 K_KP_EQUALS		= 272
 
-	/* Arrows + Home/End pad */
+	// Arrows + Home/End pad 
 K_UP			= 273
 K_DOWN		= 274
 K_RIGHT		= 275
@@ -223,7 +221,7 @@ K_END		= 279
 K_PAGEUP		= 280
 K_PAGEDOWN		= 281
 
-	/* Function keys */
+	// Function keys 
 K_F1			= 282
 K_F2			= 283
 K_F3			= 284
@@ -240,7 +238,7 @@ K_F13		= 294
 K_F14		= 295
 K_F15		= 296
 
-	/* Key state modifier keys */
+	// Key state modifier keys 
 K_NUMLOCK		= 300
 K_CAPSLOCK		= 301
 K_SCROLLOCK		= 302
@@ -252,27 +250,27 @@ K_RALT		= 307
 K_LALT		= 308
 K_RMETA		= 309
 K_LMETA		= 310
-K_LSUPER		= 311		/* Left "Windows" key */
-K_RSUPER		= 312		/* Right "Windows" key */
-K_MODE		= 313		/* "Alt Gr" key */
-K_COMPOSE		= 314		/* Multi-key compose key */
+K_LSUPER		= 311		// Left "Windows" key 
+K_RSUPER		= 312		// Right "Windows" key 
+K_MODE		= 313		// "Alt Gr" key 
+K_COMPOSE		= 314		// Multi-key compose key 
 
-	/* Miscellaneous function keys */
+	// Miscellaneous function keys 
 K_HELP		= 315
 K_PRINT		= 316
 K_SYSREQ		= 317
 K_BREAK		= 318
 K_MENU		= 319
-K_POWER		= 320		/* Power Macintosh power key */
-K_EURO		= 321		/* Some european keyboards */
-K_UNDO		= 322		/* Atari keyboard has Undo */
+K_POWER		= 320		// Power Macintosh power key 
+K_EURO		= 321		// Some european keyboards 
+K_UNDO		= 322		// Atari keyboard has Undo 
 
-	/* Add any other keys here */
+	// Add any other keys here 
 K_LAST		= 323
 )
 //SDLKey
 
-/* Enumeration of valid key mods (possibly OR'd together) */
+// Enumeration of valid key mods (possibly OR'd together) */
 const (
 	KMOD_NONE  = 0x0000
 	KMOD_LSHIFT= 0x0001
@@ -294,3 +292,83 @@ const KMOD_SHIFT= (KMOD_LSHIFT|KMOD_RSHIFT)
 const KMOD_ALT	= (KMOD_LALT|KMOD_RALT)
 const KMOD_META = (KMOD_LMETA|KMOD_RMETA)
 
+// Keysym structure
+   - The scancode is hardware dependent, and should not be used by general
+     applications.  If no hardware scancode is available, it will be 0.
+
+   - The 'unicode' translated character is only available when character
+     translation is enabled by the SDL_EnableUNICODE() API.  If non-zero,
+     this is a UNICODE character corresponding to the keypress.  If the
+     high 9 bits of the character are 0, then this maps to the equivalent
+     ASCII character:
+	char ch;
+	if ( (keysym.unicode & 0xFF80) == 0 ) {
+		ch = keysym.unicode & 0x7F;
+	} else {
+		An international character..
+	}
+
+typedef struct SDL_keysym {
+	Uint8 scancode;			// hardware specific scancode 
+	SDLKey sym;			// SDL virtual keysym 
+	SDLMod mod;			// current key modifiers 
+	Uint16 unicode;			// translated character 
+} SDL_keysym;
+///
+ 
+// This is the mask which refers to all hotkey bindings */
+const ALL_HOTKEYS = 0xFFFFFFFF
+
+
+//
+// Enable/Disable UNICODE translation of keyboard input.
+// This translation has some overhead, so translation defaults off.
+// If 'enable' is 1, translation is enabled.
+// If 'enable' is 0, translation is disabled.
+// If 'enable' is -1, the translation state is not changed.
+// It returns the previous state of keyboard translation.
+func EnableUnicode(enable int) (int) {
+  return int(C.SDL_EnableUNICODE(C.int(enable)))
+}
+
+// Enable/Disable keyboard repeat.  Keyboard repeat defaults to off.
+// 'delay' is the initial delay in ms between the time when a key is
+// pressed, and keyboard repeat begins.
+// 'interval' is the time in ms between keyboard repeat events.
+///
+const DEFAULT_REPEAT_DELAY	= 500
+const DEFAULT_REPEAT_INTERVAL	= 30
+
+// If 'delay' is set to 0, keyboard repeat is disabled.
+///
+func EnableKeyRepeat(delay, interval int) (int) {
+  return int(C.SDL_EnableKeyRepeat(C.int(delay), C.int(interval)))
+}
+// extern DECLSPEC void SDLCALL SDL_GetKeyRepeat(int *delay, int *interval);
+
+
+// Get a snapshot of the current state of the keyboard.
+// Returns an array of keystates, indexed by the SDLK_* syms.
+// Used:
+// 	Uint8 *keystate = SDL_GetKeyState(NULL);
+//	if ( keystate[SDLK_RETURN] ) ... <RETURN> is pressed.
+///
+//extern DECLSPEC Uint8 * SDLCALL SDL_GetKeyState(int *numkeys);
+
+
+// Get the current key modifier state
+func GetModState() (int) { 
+  return C.int(C.SDL_GetModState())
+}
+
+
+// Set the current key modifier state
+// This does not change the keyboard state, only the key modifier flags.
+func SetModState(state int) {
+  C.SDL_SetModState(C.SDLMod(modstate))
+}
+
+// Get the name of an SDL virtual keysym
+func GetKeyName(key int) (string) { 
+  return C.GoString(C.SDL_GetKeyName(C.SDLKey(key)))
+}
