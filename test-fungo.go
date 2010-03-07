@@ -106,6 +106,20 @@ func TestCD() {
   cd.Close()  
 }
 
+func TestJoystick() {
+  sdl.Init(sdl.INIT_EVERYTHING) ; defer sdl.Quit()
+  joysticks := sdl.OpenAllJoysticks() 
+  if len(joysticks) > 0 {  
+    fmt.Println(joysticks)
+    js0 := joysticks[0]
+    for { 
+      sdl.JoystickUpdate()
+      fmt.Println(js0.Button(0), js0.Button(1), js0.Button(2), js0.Button(3))
+      if js0.Button(0) != 0 { break }
+    }
+  }
+}
+
 func TestError() {
   sdl.Error(sdl.EFREAD)
   err := sdl.GetError()
@@ -122,6 +136,7 @@ func main()	{
   TestInit()
   TestCD()
   TestError()
+  TestJoystick()
   TestResults()
 }
 

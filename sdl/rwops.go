@@ -111,9 +111,7 @@ type RW struct {
 func OpenRW(filename, mode string) (* RW) {
   rw := new(RW)
   rw.rwops = RWFromFile(filename, mode)
-  if rw.rwops == nil { 
-    return nil
-  }
+  if rw.rwops == nil { return nil }
   rw.filename = filename
   rw.mode = mode
   return rw  

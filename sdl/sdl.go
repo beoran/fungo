@@ -27,11 +27,26 @@ func (self * C.char) free() {
   C.free(unsafe.Pointer(self))
 }
 
+/*
+// free is a method on C int * pointers to method to free the associated memory 
+func (self * C.int) free() {
+  C.free(unsafe.Pointer(self))
+}
+*/
 // cstring converts a string to a C string. This allocates memory, 
 // so don't forget to add a "defer s.free()"
 func cstr(self string) (* C.char) {
   return C.CString(self)
 }
+
+/*
+// cstring converts an int to a C int *. This allocates memory, 
+// so don't forget to add a "defer s.free()"
+func cintptrNew(self int) (* C.char) {
+  return (*C.int) unsafe.Pointer(C.malloc(C.size_t())))
+  return C.CString(self)
+}
+*/
 
 type mystring string;
 

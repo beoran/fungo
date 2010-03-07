@@ -3,16 +3,21 @@
 */
 package sdl
 
-/* 
+/*
+struct private_hwdata{};
+struct SDL_BlitMap{};
+#define map _map
+
 #include <SDL.h>
 #include <SDL_image.h>
 */
 import "C"
-import "unsafe"
-
+// import "unsafe"
+/*
 const IMAGE_MAJOR_VERSION = C.SDL_IMAGE_MAJOR_VERSION
 const IMAGE_MINOR_VERSION = C.SDL_IMAGE_MINOR_VERSION
 const IMAGE_PATCHLEVEL	  = C.SDL_IMAGE_PATCHLEVEL
+*/
 
 // This macro can be used to fill a version structure with the compile-time
 // version of the SDL_image library.
@@ -26,22 +31,23 @@ const IMAGE_PATCHLEVEL	  = C.SDL_IMAGE_PATCHLEVEL
 // This function gets the version of the dynamically linked SDL_image library.
 // it should NOT be used to fill a version structure, instead you should
 // use the SDL_IMAGE_VERSION() macro.
+/*
 func IMG_LinkedVersion() (* C.SDL_version) {
   return C.IMG_Linked_Version()
 }
-
+*/
 // Load an image from an SDL data source.
 // The 'type' may be one of: "BMP", "GIF", "PNG", etc.
 // If the image format supports a transparent pixel, SDL will set the
 // colorkey for the surface.  You can enable RLE acceleration on the
 // surface afterwards by calling:
 // SDL_SetColorKey(image, SDL_RLEACCEL, image->format->colorkey);
-
+/*
 func IMG_Load(filename string) (* C.SDL_Surface) { 
   cfile := cstr(filename); defer cfile.free()
   return C.IMG_Load(cfile);
 }
-
+*/
 // below not supported
 // extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadTyped_RW(SDL_RWops *src, int freesrc, char *type);
 /* Convenience functions */

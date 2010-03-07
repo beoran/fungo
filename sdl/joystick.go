@@ -22,6 +22,7 @@ func NumJoysticks() (int) {
 }
 
 
+
 // Get the implementation dependent name of a joystick.
 // This can be called before any joysticks are opened.
 // If no name can be found, this function returns NULL.
@@ -90,8 +91,8 @@ func JoystickEventState(state int) (int) {
 // Get the current state of an axis control on a joystick
 // The state is a value ranging from -32768 to 32767.
 // The axis indices start at index 0.
-func JoystickGetAxis(joystick * C.SDL_Joystick, axis int) (uint16) { 
-  return uint16(C.SDL_JoystickGetAxis(joystick, C.int(axis)))
+func JoystickGetAxis(joystick * C.SDL_Joystick, axis int) (int16) { 
+  return int16(C.SDL_JoystickGetAxis(joystick, C.int(axis)))
 }
 
 //
@@ -135,4 +136,92 @@ func JoystickGetButton(joystick * C.SDL_Joystick, button int) (uint8) {
 func JoystickClose(joystick * C.SDL_Joystick) { 
   C.SDL_JoystickClose(joystick)
 }
-/**/
+
+// Go wrappers around low level functions
+type Joystick struct {
+  js * C.SDL_Joystick
+}
+
+// Opens the numbered joystick, returns nil on failiure
+func OpenJoystick(index int) (*Joystick) {
+  joystick := new(Joystick)
+  joystick.js = JoystickOpen(index)
+  if joystick.js == nil { return nil }
+  return joystick
+} 
+
+// Closes the joystick.
+func (joystick * Joystick) Close() { 
+  if joystick.js == nil { return ; } 
+  JoystickClose(joystick.js)
+  joystick.js = nil
+}
+
+// Gets Index of joystick
+func (joystick * Joystick) Index() (int) { 
+  if joystick.js == nil { return -1; } 
+  return JoystickIndex(joystick.js)  
+}
+
+// Converts joystick to it's name
+func (joystick * Joystick) String() (string) { 
+  if joystick.js == nil { return  "Closed or unitiniatlzed Joystick."; } 
+  return JoystickName(joystick.Index())
+}
+
+// Gets amount of axes of the joystick 
+func (joystick * Joystick) Axes() (int) { 
+  if joystick.js == nil { return -1; } 
+  return JoystickNumAxes(joystick.js)  
+}
+
+// Gets amount of hats of the joystick 
+func (joystick * Joystick) Hats() (int) { 
+  if joystick.js == nil { return -1; } 
+  return JoystickNumHats(joystick.js)  
+}
+
+// Gets amount of balls of the joystick 
+func (joystick * Joystick) Balls() (int) { 
+  if joystick.js == nil { return -1; } 
+  return JoystickNumBalls(joystick.js)  
+}
+
+// Gets amount of buttons of the joystick 
+func (joystick * Joystick) Buttons() (int) { 
+  if joystick.js == nil { return -1; } 
+  return JoystickNumAxes(joystick.js)  
+}
+
+// Gets the current position of the numbered axis
+func (joystick * Joystick) Axis(nr int) (int16) { 
+  if joystick.js == nil { return 0; } 
+  return JoystickGetAxis(joystick.js, nr)  
+}
+
+// Gets the current position of the button 
+func (joystick * Joystick) Button(nr int) (uint8) { 
+  if joystick.js == nil { return 0; } 
+  return JoystickGetButton(joystick.js, nr)  
+}
+
+// Gets the current position of the numbered hat
+func (joystick * Joystick) Hat(nr int) (uint8) { 
+  if joystick.js == nil { return 0; } 
+  return JoystickGetHat(joystick.js, nr)
+}
+
+// Opens all the joysticks, and returns the corresponing objects in an array 
+func OpenAllJoysticks() ([]*Joystick) {
+  numjoy   := NumJoysticks()
+  result   := make([]*Joystick, numjoy)
+  for i := 0; i < numjoy; i++ { 
+    js := OpenJoystick(i)
+    result[i] = js
+  }  
+  return result
+} 
+
+//Retruns a string with the currecnt button status
+
+
