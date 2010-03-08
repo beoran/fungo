@@ -2,11 +2,10 @@
 * Bindings to SDL_RWops
 */
 package sdl
-
-/* 
-#include <SDL.h>
-#include <SDL_rwops.h>
-*/
+// 
+//#include <SDL.h>
+//#include <SDL_rwops.h>
+//
 import "C"
 import "unsafe"
 
@@ -42,6 +41,8 @@ type seek_func * func (rwops * C.SDL_RWops, offset C.int, whence C.int) (C.int)
 
 // I doubt these will work...
 func RWSeek(rwops * C.SDL_RWops, offset, whence int) (int) {
+  //return int(My_RWseek(rwops, C.int(offset), C.int(whence)))
+  // int My_RWseek(SDL_RWops *ctx, int offset, int whence) { return (ctx)->seek(ctx, offset,whence); } 
   tocalla := seek_func((unsafe.Pointer(rwops.seek)))
   tocall  := (*tocalla)
   return int(tocall(rwops, C.int(offset), C.int(whence)))
