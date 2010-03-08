@@ -187,6 +187,42 @@ func Quit() {
 }
 
 
+// Error Handling
+
+/* Does not compile due to CGO limitation.
+// Sets the current SDL error message 
+func SetError(fmt string) {
+  cres  := cstr(fmt); defer cres.free()
+  C.SDL_SetError(cres)
+}
+*/
+// Gets the current error message of SDL
+func GetError() (string) {
+  res   := C.SDL_GetError()
+  return C.GoString(res)
+}
+
+// Clears the error status of SDL
+func ClearError() {
+  C.SDL_ClearError();
+}
+
+// Error codes of SDL
+type Errorcode int
+const ( 
+  ENOMEM = Errorcode(iota)
+  EFREAD 
+  EFWRITE
+  EFSEEK
+  UNSUPPORTED
+  LASTERROR
+)
+
+// Raises an SDL error with the given code
+func Error(code Errorcode) {
+  C.SDL_Error(C.SDL_errorcode(code))
+}
+
 
   
 

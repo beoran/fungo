@@ -1,19 +1,13 @@
 package sdl
 
-
-// struct private_hwdata{};
-// struct SDL_BlitMap{};
-// #define map _map
 // #include <SDL.h>
-// void SetError(const char* err) { SDL_SetError("%s", err); }
+// #include <SDL_error.h>
 import "C"
-// import "fmt" 
 
-/* Does not compile due to CGO limitation. */
-/*
+/* Does not compile due to CGO limitation. 
 func SetError(fmt string) {
   cres  := cstr(fmt); defer cres.free()
-  C.SetError(cres)
+  C.SDL_SetError(cres)
 }
 */
 
