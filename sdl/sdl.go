@@ -374,3 +374,100 @@ func (rw * RW) Free() {
   FreeRW(rw.rwops)
   rw.rwops = nil
 }
+
+// SDL mouse event handling
+
+// Retrieve the current state of the mouse.
+// The current button state is returned as a button bitmask, which can
+// be tested using the sdl.BUTTON(X) functions, and x and y are set 
+// to the current mouse cursor position.
+func GetMouseState() (uint8, int, int) { 
+  var x, y int
+  px := (*C.int)(unsafe.Pointer(&x))
+  py := (*C.int)(unsafe.Pointer(&y))
+  but := uint8(C.SDL_GetMouseState(px, py))
+  return but, x, y  
+}
+
+
+// Retrieve the current state of the mouse.
+// The current button state is returned as a button bitmask, which can
+// be tested using the SDL_BUTTON(X) macros, and x and y are set to the
+// mouse deltas since the last call to SDL_GetRelativeMouseState().
+func GetRelativeMouseState() (uint8, int, int) {
+  var x, y int
+  px := (*C.int)(unsafe.Pointer(&x))
+  py := (*C.int)(unsafe.Pointer(&y))
+  but := uint8(C.SDL_GetRelativeMouseState(px, py))
+  return but, x, y  
+}
+
+// Set the position of the mouse cursor (generates a mouse motion event)
+func WarpMouse(x, y uint16) { 
+  C.SDL_WarpMouse(C.Uint16(x), C.Uint16(y))
+}
+
+//
+// Create a cursor using the specified data and mask (in MSB format).
+// The cursor width must be a multiple of 8 bits.
+// The cursor is created in black and white according to the following:
+// data  mask    resulting pixel on screen
+//  0     1       White
+//  1     1       Black
+//  0     0       Transparent
+//  1     0       Inverted color if possible, black if not.
+//
+// Cursors created with this function must be freed with
+// SDL_FreeCursor().
+/*
+extern DECLSPEC SDL_Cursor * SDLCALL SDL_CreateCursor
+    (Uint8 *data, Uint8 *mask, int w, int h, int hot_x, int hot_y);
+*/
+
+// Set the currently active cursor to the specified one.
+// If the cursor is currently visible, the change will be immediately 
+// represented on the display.
+
+/*
+extern DECLSPEC void SDLCALL SDL_SetCursor(SDL_Cursor *cursor);
+*/
+
+// Returns the currently active cursor.
+/* 
+extern DECLSPEC SDL_Cursor * SDLCALL SDL_GetCursor(void); 
+*/
+
+//
+// Deallocates a cursor created with SDL_CreateCursor().
+//
+/*
+extern DECLSPEC void SDLCALL SDL_FreeCursor(SDL_Cursor *cursor);
+*/
+// Toggle whether or not the cursor is shown on the screen.
+// The cursor start off displayed, but can be turned off.
+// ShowCursor() returns 1 if the cursor was being displayed
+// before the call, or 0 if it was not.  You can query the current
+// state by passing a 'toggle' value of -1.
+/* 
+extern DECLSPEC int SDLCALL SDL_ShowCursor(int toggle);
+*/
+// Used as a mask when testing buttons in buttonstate
+// Button 1:  Left mouse button
+// Button 2:  Middle mouse button
+// Button 3:  Right mouse button
+// Button 4:  Mouse wheel up   (may also be a real button)
+// Button 5:  Mouse wheel down (may also be a real button)
+func BUTTON(X uint8) (uint8) { 
+  return (1 << ((X)-1))
+}   
+
+const BUTTON_LEFT       = 1
+const BUTTON_MIDDLE     = 2
+const BUTTON_RIGHT      = 3
+const BUTTON_WHEELUP    = 4
+const BUTTON_WHEELDOWN  = 5
+/*
+#define SDL_BUTTON_LMASK  SDL_BUTTON(SDL_BUTTON_LEFT)
+#define SDL_BUTTON_MMASK  SDL_BUTTON(SDL_BUTTON_MIDDLE)
+#define SDL_BUTTON_RMASK  SDL_BUTTON(SDL_BUTTON_RIGHT)
+*/
