@@ -12,7 +12,7 @@ package sdl
 //#include <SDL_mixer.h>
 //#include <SDL_ttf.h>
 import "C"
-import "unsafe"
+// import "fmt"
 
 // Transparency definitions: These define alpha as the opacity of a surface
 const ALPHA_OPAQUE	=255
@@ -132,12 +132,14 @@ const  SDL_SRCALPHA   =	0x00010000
 const  SDL_PREALLOC   =	0x01000000	
 
 // Evaluates to true if the surface needs to be locked before access 
+/*
 func MUSTLOCK(surface * C.SDL_Surface) (int) { 
   res := ( surface.offset ||  
     surface.flags & (SDL_HWSURFACE|SDL_ASYNCBLIT|SDL_RLEACCEL)) != 0 )
   return int(res)
 }
-    
+*/
+
 // Useful for determining the video hardware capabilities 
 /*
 typedef struct SDL_VideoInfo {
@@ -245,9 +247,9 @@ func VideoQuit() {
 func VideoDriverName() (string)  {
   maxlen := 255
   namebuf:= cstrNew(maxlen) ; defer namebuf.free()
-  res := C.SDL_VideoDriverName(namebuf, maxlen)
+  res := C.SDL_VideoDriverName(namebuf, C.int(maxlen))
   if res == nil { return "Video Not Initialized" }
-  return res
+  return C.GoString(res)
 }
 
 // This function returns a pointer to the current display surface.
@@ -262,8 +264,8 @@ func GetVideoSurface() (* C.SDL_Surface ) {
 // video hardware.  If this is called before SDL_SetVideoMode(), the 'vfmt'
 // member of the returned structure will contain the pixel format of the
 // "best" video mode.
-func GetVideoInfo() (* C.VideoInfo) { 
-  C.SDL_GetVideoInfo()
+func GetVideoInfo() (* C.SDL_VideoInfo) { 
+  return C.SDL_GetVideoInfo()
 }
 
 // Check to see if a particular video mode is supported.
@@ -275,7 +277,7 @@ func GetVideoInfo() (* C.VideoInfo) {
 //
 // The arguments to SDL_VideoModeOK() are the same ones you would pass to
 // SDL_SetVideoMode()
-func VideoModeOK(wide, hight, bpp int, flags Uint32) bool { 
+func VideoModeOK(width, height, bpp int, flags uint32) bool { 
   return i2b(int(C.SDL_VideoModeOK(C.int(width),C.int(height),
 	    C.int(bpp), C.Uint32(flags))))
 }
@@ -348,7 +350,7 @@ func ListModes() {
 // SDL will fall back to reduced functionality if the exact flags you wanted
 // are not available.
 func SetVideoMode(width, height, bpp int, flags uint32) (* C.SDL_Surface) {
-  return SDL_SetVideoMode(C.int(width), C.int(height), 
+  return C.SDL_SetVideoMode(C.int(width), C.int(height), 
   C.int(bpp), C.Uint32(flags))
 } 
 
@@ -358,7 +360,7 @@ func SetVideoMode(width, height, bpp int, flags uint32) (* C.SDL_Surface) {
 // These functions should not be called while 'screen' is locked.
 // extern DECLSPEC void SDLCALL SDL_UpdateRects
 //		(SDL_Surface *screen, int numrects, SDL_Rect *rects);
-func UpdateRect(screen * SDL_Surface, x, y int32, w, h uint32) { 
+func UpdateRect(screen * C.SDL_Surface, x, y int32, w, h uint32) { 
   C.SDL_UpdateRect(screen, C.Sint32(x), C.Sint32(y), C.Uint32(w), C.Uint32(h))
 }
 
@@ -370,8 +372,8 @@ func UpdateRect(screen * SDL_Surface, x, y int32, w, h uint32) {
 // The SDL_DOUBLEBUF flag must have been passed to SDL_SetVideoMode() when
 // setting the video mode for this function to perform hardware flipping.
 // This function returns 0 if successful, or -1 if there was an error.
-func Flip(screen * SDL_Surface) { 
-  C.SDL_Flip()
+func Flip(screen * C.SDL_Surface) { 
+  C.SDL_Flip(screen)
 }
 
 // Set the gamma correction for each of the color channels.
@@ -446,33 +448,33 @@ func SetGamma(red, green, blue float) (int) {
 
 
 // Maps an RGB triple to an opaque pixel value for a given pixel format
-func MapRGB( format * C.SDL_PixelFormat, r, g, b uint) uint32 {
-  uint32(C.SDL_MapRGB(format, C.Uint8(r), C.Uint8(g), C.Uint8(b)))
+func MapRGB(format * C.SDL_PixelFormat, r, g, b uint) uint32 {
+  return uint32(C.SDL_MapRGB(format, C.Uint8(r), C.Uint8(g), C.Uint8(b)))
 }
 
 // Maps an RGBA quadruple to a pixel value for a given pixel format
-func MapRGB(format * C.SDL_PixelFormat, r, g, b, a uint) uint32 {
-  uint32(C.SDL_MapRGBA(format, C.Uint8(r), C.Uint8(g), C.Uint8(b), C.Uint8(a)))
+func MapRGBA(format * C.SDL_PixelFormat, r, g, b, a uint) uint32 {
+  return uint32(C.SDL_MapRGBA(format, C.Uint8(r), C.Uint8(g), C.Uint8(b), C.Uint8(a)))
 }
  
 // Maps a pixel value into the RGB components for a given pixel format
-func GetRGB(format * C.SDL_PixelFormat, pixel uint32) (int, int, int) { 
+func GetRGB(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte) { 
   var r, b, g uint8 
   pr := cbyteptr(&r)
   pb := cbyteptr(&b)
-  pb := cbyteptr(&g)
-  C.SDL_GetRGB(C.Uint32(pixel), fmt, pr, pg, pb)
+  pg := cbyteptr(&g)
+  C.SDL_GetRGB(C.Uint32(pixel), format, pr, pg, pb)
   return r, g, b
 }
 
 // Maps a pixel value into the RGBA components for a given pixel format
-func GetRGBA(format * C.SDL_PixelFormat, pixel uint32) (int, int, int, int) { 
+func GetRGBA(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte, byte) { 
   var r, b, g, a uint8 
   pr := cbyteptr(&r)
   pb := cbyteptr(&b)
-  pb := cbyteptr(&g)
+  pg := cbyteptr(&g)
   pa := cbyteptr(&a)
-  C.SDL_GetRGBA(C.Uint32(pixel), fmt, pr, pg, pb, pa)
+  C.SDL_GetRGBA(C.Uint32(pixel), format, pr, pg, pb, pa)
   return r, g, b, a
 }
  
@@ -509,7 +511,7 @@ func GetRGBA(format * C.SDL_PixelFormat, pixel uint32) (int, int, int, int) {
 // reason the surface could not be placed in video memory, it will not have
 // the SDL_HWSURFACE flag set, and will be created in system memory instead.
 func CreateRGBSurface(flags uint32, width, height, depth int, 
-  rmask, gmask, bmask amask uint32) (* C.SDL_Surface) { 
+  rmask, gmask, bmask, amask uint32) (* C.SDL_Surface) { 
  return C.SDL_CreateRGBSurface(C.Uint32(flags), C.int(width), C.int(height), 
 	  C.int(depth),	C.Uint32(rmask), C.Uint32(gmask), 
 	  C.Uint32(bmask), C.Uint32(amask));
@@ -524,7 +526,7 @@ func CreateRGBSurfaceFrom() {
 
 // Frees the memory associated with the surface
 func FreeSurface(surface * C.SDL_Surface) { 
-  return C.SDL_FreeSurface(surface)
+  C.SDL_FreeSurface(surface)
 }
 
 //
@@ -549,7 +551,7 @@ func LockSurface(surface * C.SDL_Surface) (int) {
 }
 
 func UnlockSurface(surface * C.SDL_Surface) { 
-  C.SDL_UnlockSurface(surface))
+  C.SDL_UnlockSurface(surface)
 }
 
 // Load a surface from a seekable SDL data source (memory or file.)
@@ -583,7 +585,7 @@ func UnlockSurface(surface * C.SDL_Surface) {
 // If 'flag' is 0, this function clears any current color key.
 // This function returns 0, or -1 if there was an error.
 func SetColorKey(surface * C.SDL_Surface, flag, key uint32) int { 
-  return int(C.SDL_SetColorKey(surface, C.Uint32(flag), C.Uint32(key))
+  return int(C.SDL_SetColorKey(surface, C.Uint32(flag), C.Uint32(key)))
 }
 
 // This function sets the alpha value for the entire surface, as opposed to
@@ -599,8 +601,8 @@ func SetColorKey(surface * C.SDL_Surface, flag, key uint32) int {
 // surface; if SDL_RLEACCEL is not specified, the RLE accel will be removed.
 //
 // The 'alpha' parameter is ignored for surfaces that have an alpha channel.
-func SetColorKey(surface * C.SDL_Surface, flag uint32, alpha uint8) int { 
-  return int(C.SDL_SetColorAlpha(surface, C.Uint32(flag), C.Uint8(alphay))
+func SetAlpha(surface * C.SDL_Surface, flag uint32, alpha uint8) int { 
+  return int(C.SDL_SetAlpha(surface, C.Uint32(flag), C.Uint8(alpha)))
 }
 
 // Sets the clipping rectangle for the destination surface in a blit.
@@ -614,14 +616,14 @@ func SetColorKey(surface * C.SDL_Surface, flag uint32, alpha uint8) int {
 // Note that blits are automatically clipped to the edges of the source
 // and destination surfaces.
 func SetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) (bool) { 
-  i2b(int(C.SDL_SetClipRect(surface, rect)))
+  return i2b(int(C.SDL_SetClipRect(surface, rect)))
 }
 
 // Gets the clipping rectangle for the destination surface in a blit.
 // 'rect' must be a pointer to a valid rectangle which will be filled
 // with the correct values.
 func GetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) { 
-  C.SDL_GetClipRect(surface, rect))
+  C.SDL_GetClipRect(surface, rect)
 }
 
 
@@ -637,7 +639,7 @@ func GetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) {
 // This function is used internally by SDL_DisplayFormat().
 func ConvertSurface(src * C.SDL_Surface, fmt * C.SDL_PixelFormat, 
   flags uint32) ( * C.SDL_Surface) {
-  return SDL_ConvertSurface(src, fmt, C.Uint32(flags))
+  return C.SDL_ConvertSurface(src, fmt, C.Uint32(flags))
 }
 
 // This performs a fast blit from the source surface to the destination
@@ -708,7 +710,7 @@ func ConvertSurface(src * C.SDL_Surface, fmt * C.SDL_PixelFormat,
 // You should call SDL_BlitSurface() unless you know exactly how SDL
 // blitting works internally and how to use the other blit functions.
 func BlitSurface(src, dst * C.SDL_Surface, srcrect, dstrect *C.SDL_Rect) (int) {
-  return int(C.SDL_UpperBlit(src, srcrect, dst, dstrect)
+  return int(C.SDL_UpperBlit(src, srcrect, dst, dstrect))
 }
 
 // This function performs a fast fill of the given rectangle with 'color'
@@ -718,8 +720,8 @@ func BlitSurface(src, dst * C.SDL_Surface, srcrect, dstrect *C.SDL_Rect) (int) {
 // The color should be a pixel of the format used by the surface, and 
 // can be generated by the SDL_MapRGB() function.
 // This function returns 0 on success, or -1 on error.
-func FillRect(dst * C.SDL_Surface, dstrect * C.SDL_Rect, uint32 color) (int) { 
-  return int(C.SDL_FillRect(dst, dstrect, color)
+func FillRect(dst * C.SDL_Surface, dstrect * C.SDL_Rect, color uint32) (int) { 
+  return int(C.SDL_FillRect(dst, dstrect, C.Uint32(color)))
 }
 
 // This function takes a surface and copies it to a new surface of the
@@ -732,7 +734,7 @@ func FillRect(dst * C.SDL_Surface, dstrect * C.SDL_Rect, uint32 color) (int) {
 //
 // If the conversion fails or runs out of memory, it returns NULL
 func DisplayFormat(surface * C.SDL_Surface) (* C.SDL_Surface) { 
-  return SDL_DisplayFormat(surface)
+  return C.SDL_DisplayFormat(surface)
 }
 
 // This function takes a surface and copies it to a new surface of the
@@ -746,7 +748,7 @@ func DisplayFormat(surface * C.SDL_Surface) (* C.SDL_Surface) {
 //
 // If the conversion fails or runs out of memory, it returns NULL
 func DisplayFormatAlpha(surface * C.SDL_Surface) (* C.SDL_Surface) { 
-  return SDL_DisplayFormatAlpha(surface)
+  return C.SDL_DisplayFormatAlpha(surface)
 }
  
 
@@ -758,19 +760,19 @@ func DisplayFormatAlpha(surface * C.SDL_Surface) (* C.SDL_Surface) {
 // Calling the returned surface an overlay is something of a misnomer because
 // the contents of the display surface underneath the area where the overlay
 // is shown is undefined - it may be overwritten with the converted YUV data.
-CreateYUVOverlay(width, height int, format uint32, 
-  display * SDL_Surface ) (* C.SDL_Overlay) { 
+func CreateYUVOverlay(width, height int, format uint32, 
+  display * C.SDL_Surface ) (* C.SDL_Overlay) { 
   return C.SDL_CreateYUVOverlay(C.int(width), C.int(height),
 				C.Uint32(format), display)
 }
 
 // Lock an overlay for direct access, and unlock it when you are done 
 func LockYUVOverlay(overlay * C.SDL_Overlay) (int) { 
-    return int(C.SDL_LockYUVOverlay(overlay))
+  return int(C.SDL_LockYUVOverlay(overlay))
 }
 
 func UnlockYUVOverlay(overlay * C.SDL_Overlay) {
-  return C.SDL_UnlockYUVOverlay(overlay)
+  C.SDL_UnlockYUVOverlay(overlay)
 }
 
 // Blit a video overlay to the display surface.
@@ -784,7 +786,7 @@ func DisplayYUVOverlay(overlay * C.SDL_Overlay, dstrect * C.SDL_Rect) (int) {
 
 // Free a video overlay 
 func FreeYUVOverlay(overlay * C.SDL_Overlay) { 
-  return C.SDL_FreeYUVOverlay(overlay)
+  C.SDL_FreeYUVOverlay(overlay)
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -826,10 +828,10 @@ func FreeYUVOverlay(overlay * C.SDL_Overlay) {
 
 //
 // Sets/Gets the title and icon text of the display window (UTF-8 encoded)
-WM_SetCaption(title, icon string) {
+func WM_SetCaption(title, icon string) {
   ctitle := cstr(title)
   cicon  := cstr(icon)  
-  SDL_WM_SetCaption(ctitle, icon)
+  C.SDL_WM_SetCaption(ctitle, cicon)
 }
 
 // extern DECLSPEC void SDLCALL SDL_WM_GetCaption(char **title, char **icon);
@@ -840,14 +842,14 @@ WM_SetCaption(title, icon string) {
 // It takes an icon surface, and a mask in MSB format.
 // If 'mask' is NULL, the entire icon surface will be used as the icon.
 // TODO: support mask 
-WM_SetIcon(icon * C.SDL_Surface) { 
+func WM_SetIcon(icon * C.SDL_Surface) { 
   C.SDL_WM_SetIcon(icon, nil);
 }
 
 // This function iconifies the window, and returns 1 if it succeeded.
 // If the function succeeds, it generates an SDL_APPACTIVE loss event.
 // This function is a noop and returns 0 in non-windowed environments.
-WM_Iconify() (int) { 
+func WM_Iconify() (int) { 
   return int(C.SDL_WM_IconifyWindow())
 }
 
@@ -864,23 +866,23 @@ WM_Iconify() (int) {
 // set, then the display will be windowed by default where supported.
 //
 // This is currently only implemented in the X11 video driver.
-WM_ToggleFullScreen(surface * SDL_Surface) (int) { 
-  return int(C.SDL_WM_TooggleFullScreen(surface))
+func WM_ToggleFullScreen(surface * C.SDL_Surface) (int) { 
+  return int(C.SDL_WM_ToggleFullScreen(surface))
 }
 
 // This function allows you to set and query the input grab state of
 // the application.  It returns the new input grab state.
-type SDL_Grabmode int
+type SDL_GrabMode int
 const (
-	GRAB_QUERY 	= SDL_Grabmode(-1)
-	GRAB_OFF	= SDL_Grabmode(0)
-	GRAB_ON 	= SDL_Grabmode(1)
+	GRAB_QUERY 	= SDL_GrabMode(-1)
+	GRAB_OFF	= SDL_GrabMode(0)
+	GRAB_ON 	= SDL_GrabMode(1)
 )
 
 // Grabbing means that the mouse is confined to the application window,
 // and nearly all keyboard input is passed directly to the application,
 // and not interpreted by a window manager, if any.
-WM_GrabInput(mode SDL_GrabMode) (SDL_GrabMode) { 
+func WM_GrabInput(mode SDL_GrabMode) (SDL_GrabMode) { 
   return SDL_GrabMode(C.SDL_WM_GrabInput(C.SDL_GrabMode(mode)))
 }
 

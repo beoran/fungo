@@ -8,7 +8,8 @@ TARG=fungo/sdl
 
 # GOFILES:=constants.$(O).go
 # audio.go 
-CGOFILES:=audio.go events.go cdrom.go joystick.go keyboard.go ttf.go mixer.go sdl.go
+CGOFILES:=audio.go events.go cdrom.go joystick.go keyboard.go ttf.go mixer.go\
+video.go sdl.go
 
 # CGO_CFLAGS:=`pkg-config --cflags sdl`
 CGO_CFLAGS:=`sdl-config --cflags`

@@ -54,7 +54,7 @@ func cintptr(ptr * int)  (*C.int)  {
 }
 
 // Converts a byte pointer to a C.Uchar8 pointer
-func cbyteptr(ptr * int)  (*C.Uint8)  { 
+func cbyteptr(ptr * uint8)  (*C.Uint8)  { 
   return (*C.Uint8)(unsafe.Pointer(ptr))
 }
 
