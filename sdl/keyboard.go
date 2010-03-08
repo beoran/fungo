@@ -9,6 +9,8 @@ package sdl
 */
 import "C"
 
+import "unsafe"
+
 // What we really want is a mapping of every raw key on the keyboard.
 // To support international keyboards we use the range 0xA1 - 0xFF
 // as international virtual keycodes.  We'll follow in the footsteps of X11...
@@ -293,27 +295,25 @@ const KMOD_ALT	= (KMOD_LALT|KMOD_RALT)
 const KMOD_META = (KMOD_LMETA|KMOD_RMETA)
 
 // Keysym structure
-   - The scancode is hardware dependent, and should not be used by general
-     applications.  If no hardware scancode is available, it will be 0.
-
-   - The 'unicode' translated character is only available when character
-     translation is enabled by the SDL_EnableUNICODE() API.  If non-zero,
-     this is a UNICODE character corresponding to the keypress.  If the
-     high 9 bits of the character are 0, then this maps to the equivalent
-     ASCII character:
-	char ch;
-	if ( (keysym.unicode & 0xFF80) == 0 ) {
-		ch = keysym.unicode & 0x7F;
-	} else {
-		An international character..
-	}
-
-typedef struct SDL_keysym {
-	Uint8 scancode;			// hardware specific scancode 
-	SDLKey sym;			// SDL virtual keysym 
-	SDLMod mod;			// current key modifiers 
-	Uint16 unicode;			// translated character 
-} SDL_keysym;
+// - The scancode is hardware dependent, and should not be used by general
+//   applications.  If no hardware scancode is available, it will be 0.
+// - The 'unicode' translated character is only available when character
+//    translation is enabled by the SDL_EnableUNICODE() API.  If non-zero,
+//    this is a UNICODE character corresponding to the keypress.  If the
+//    high 9 bits of the character are 0, then this maps to the equivalent
+//    ASCII character:
+//	char ch;
+//	if ( (keysym.unicode & 0xFF80) == 0 ) {
+//		ch = keysym.unicode & 0x7F;
+//	} else {
+//		An international character..
+//	}
+// typedef struct SDL_keysym {
+// 	Uint8 scancode;			// hardware specific scancode 
+//	SDLKey sym;			// SDL virtual keysym 
+//	SDLMod mod;			// current key modifiers 
+//	Uint16 unicode;			// translated character 
+//} SDL_keysym;*/
 ///
  
 // This is the mask which refers to all hotkey bindings */
@@ -355,17 +355,24 @@ func EnableKeyRepeat(delay, interval int) (int) {
 ///
 //extern DECLSPEC Uint8 * SDLCALL SDL_GetKeyState(int *numkeys);
 
+func GetKeyState() ([]uint8) {
+  ks        := C.SDL_GetKeyState(nil) 
+  ptr       := (*[K_LAST]byte)(unsafe.Pointer(ks))
+  res       := ptr[0:K_LAST]
+  return res 
+}
+
 
 // Get the current key modifier state
 func GetModState() (int) { 
-  return C.int(C.SDL_GetModState())
+  return int(C.SDL_GetModState())
 }
 
 
 // Set the current key modifier state
 // This does not change the keyboard state, only the key modifier flags.
 func SetModState(state int) {
-  C.SDL_SetModState(C.SDLMod(modstate))
+  C.SDL_SetModState(C.SDLMod(state))
 }
 
 // Get the name of an SDL virtual keysym

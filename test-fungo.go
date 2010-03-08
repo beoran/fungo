@@ -120,6 +120,12 @@ func TestJoystick() {
   }
 }
 
+func TestKeyboard() {
+  sdl.EnableUnicode(1)
+  keys := sdl.GetKeyState()
+  fmt.Println(keys)
+}
+
 func TestError() {
   sdl.Error(sdl.EFREAD)
   err := sdl.GetError()
@@ -133,6 +139,7 @@ func TestError() {
 
 func main()	{
   TestCpuinfo()
+  TestKeyboard()
   TestInit()
   TestCD()
   TestError()
