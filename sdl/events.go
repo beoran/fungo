@@ -321,3 +321,10 @@ func EventState(kind uint8, state int) (uint8) {
   return uint8(C.SDL_EventState(C.Uint8(kind), C.int(state)))
 }
 
+// Returns true if a quit was requested.
+func QuitRequested() (bool) { 
+  C.SDL_PumpEvents()
+  return i2b(int(C.SDL_PeepEvents(nil, 0, C.SDL_eventaction(PEEKEVENT), 		
+	  C.Uint32(QUITMASK))))
+}	
+

@@ -1,11 +1,16 @@
 //
-// Bindings to SDL_Audio
+// Bindings to SDL_Mixer
 
 package sdl
 
- 
-// #include <SDL.h>
-// #include <SDL_mixer.h>
+//struct private_hwdata{};
+//struct SDL_BlitMap{};
+//#define map _map
+//
+//#include <SDL.h>
+//#include <SDL_image.h>
+//#include <SDL_mixer.h>
+//#include <SDL_ttf.h>
 import "C"
 import "unsafe"
 
