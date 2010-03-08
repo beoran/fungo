@@ -53,6 +53,11 @@ func cintptr(ptr * int)  (*C.int)  {
   return (*C.int)(unsafe.Pointer(ptr))
 }
 
+// Converts a byte pointer to a C.Uchar8 pointer
+func cbyteptr(ptr * int)  (*C.Uint8)  { 
+  return (*C.Uint8)(unsafe.Pointer(ptr))
+}
+
 /*
 // cstring converts an int to a C int *. This allocates memory, 
 // so don't forget to add a "defer s.free()"
