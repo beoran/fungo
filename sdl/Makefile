@@ -6,10 +6,10 @@ include $(GOROOT)/src/Make.$(GOARCH)
 
 TARG=fungo/sdl
 
-# GOFILES:=constants.$(O).go
-# audio.go 
-CGOFILES:=audio.go events.go cdrom.go joystick.go keyboard.go ttf.go mixer.go\
-video.go sdl.go
+GOFILES:=structs.$(O).go
+# audio.go
+CGOFILES:=audio.go events.go cdrom.go joystick.go keyboard.go\
+ttf.go mixer.go video.go wrap.go sdl.go
 
 # CGO_CFLAGS:=`pkg-config --cflags sdl`
 CGO_CFLAGS:=`sdl-config --cflags`
@@ -20,6 +20,6 @@ CLEANFILES+=sdl
 
 include $(GOROOT)/src/Make.pkg
 
-constants.$(O).go: constants.c
-	godefs -g opencv constants.c > constants.$(O).go
-	gofmt -w constants.$(O).go
+structs.$(O).go: structs.c
+	godefs -g sdl structs.c > structs.$(O).go
+	gofmt -w structs.$(O).go

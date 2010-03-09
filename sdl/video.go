@@ -12,7 +12,8 @@ package sdl
 //#include <SDL_mixer.h>
 //#include <SDL_ttf.h>
 import "C"
-// import "fmt"
+//import "unsafe"
+//import "runtime"
 
 // Transparency definitions: These define alpha as the opacity of a surface
 const ALPHA_OPAQUE	=255
@@ -95,50 +96,50 @@ typedef struct SDL_Surface {
 // These are the currently supported flags for the SDL_surface 
 // Available for CreateRGBSurface() or SetVideoMode() 
 // Surface is in system memory 
-const  SDL_SWSURFACE =0x00000000	
+const  SWSURFACE =0x00000000	
 // Surface is in video memory 
-const  SDL_HWSURFACE =0x00000001	
+const  HWSURFACE =0x00000001	
 // Use asynchronous blits if possible 
-const  SDL_ASYNCBLIT =0x00000004	
+const  ASYNCBLIT =0x00000004	
 // Available for SDL_SetVideoMode() 
 // Allow any video depth/pixel-format 
-const  SDL_ANYFORMAT =0x10000000	
+const  ANYFORMAT =0x10000000	
 // Surface has exclusive palette 
-const  SDL_HWPALETTE =0x20000000	
+const  HWPALETTE =0x20000000	
 // Set up double-buffered video mode 
-const  SDL_DOUBLEBUF =0x40000000	
+const  DOUBLEBUF =0x40000000	
 // Surface is a full screen display 
-const  SDL_FULLSCREEN=0x80000000	
+const  FULLSCREEN=0x80000000	
 // Create an OpenGL rendering context 
-const  SDL_OPENG     =0x00000002      
+const  OPENGL     =0x00000002      
 // Create an OpenGL rendering context and use it for blitting 
-const  SDL_OPENGLBLIT=0x0000000A	
+const  OPENGLBLIT=0x0000000A	
 // This video mode may be resized 
-const  SDL_RESIZABLE =0x00000010	
+const  RESIZABLE =0x00000010	
 // No window caption or edge frame 
-const  SDL_NOFRAME   =0x00000020	
+const  NOFRAME   =0x00000020	
 // Used internally (read-only) 
 // Blit uses hardware acceleration 
-const  SDL_HWACCEL    = 0x00000100	
+const  HWACCEL    = 0x00000100	
 // Blit uses a source color key 
-const  SDL_SRCCOLORKEY=	0x00001000	
+const  SRCCOLORKEY=	0x00001000	
 // Private flag 
-const  SDL_RLEACCELOK =	0x00002000	
+const  RLEACCELOK =	0x00002000	
 // Surface is RLE encoded 
-const  SDL_RLEACCEL   =	0x00004000	
+const  RLEACCEL   =	0x00004000	
 // Blit uses source alpha blending 
-const  SDL_SRCALPHA   =	0x00010000	
+const  SRCALPHA   =	0x00010000	
 // Surface uses preallocated memory 
-const  SDL_PREALLOC   =	0x01000000	
+const  PREALLOC   =	0x01000000	
 
 // Evaluates to true if the surface needs to be locked before access 
-/*
-func MUSTLOCK(surface * C.SDL_Surface) (int) { 
-  res := ( surface.offset ||  
-    surface.flags & (SDL_HWSURFACE|SDL_ASYNCBLIT|SDL_RLEACCEL)) != 0 )
-  return int(res)
+func mustLock(surface * C.SDL_Surface) (bool) {
+  aid := uint32(surface.flags) & (HWSURFACE|ASYNCBLIT|RLEACCEL)
+  off := uint32(surface.offset) 
+  res := (off!=0) || (aid!=0)
+  return res
 }
-*/
+
 
 // Useful for determining the video hardware capabilities 
 /*
@@ -168,11 +169,11 @@ typedef struct SDL_VideoInfo {
 // For information on the relationship between color spaces, see:
 // http://www.neuro.sfc.keio.ac.jp/~aly/polygon/info/color-space-faq.html
 
-const  SDL_YV12_OVERLAY = 0x32315659	// Planar mode: Y + V + U  (3 planes) 
-const  SDL_IYUV_OVERLAY = 0x56555949	// Planar mode: Y + U + V  (3 planes) 
-const  SDL_YUY2_OVERLAY = 0x32595559	// Packed mode: Y0+U0+Y1+V0 (1 plane) 
-const  SDL_UYVY_OVERLAY = 0x59565955	// Packed mode: U0+Y0+V0+Y1 (1 plane) 
-const  SDL_YVYU_OVERLAY = 0x55595659	// Packed mode: Y0+V0+Y1+U0 (1 plane) 
+const  YV12_OVERLAY = 0x32315659	// Planar mode: Y + V + U  (3 planes) 
+const  IYUV_OVERLAY = 0x56555949	// Planar mode: Y + U + V  (3 planes) 
+const  YUY2_OVERLAY = 0x32595559	// Packed mode: Y0+U0+Y1+V0 (1 plane) 
+const  UYVY_OVERLAY = 0x59565955	// Packed mode: U0+Y0+V0+Y1 (1 plane) 
+const  YVYU_OVERLAY = 0x55595659	// Packed mode: Y0+V0+Y1+U0 (1 plane) 
 
 // The YUV hardware video overlay 
 /*
@@ -196,23 +197,23 @@ typedef struct SDL_Overlay {
 
 // Public enumeration for setting the OpenGL window attributes. 
 const (
-    SDL_GL_RED_SIZE = iota
-    SDL_GL_GREEN_SIZE
-    SDL_GL_BLUE_SIZE
-    SDL_GL_ALPHA_SIZE
-    SDL_GL_BUFFER_SIZE
-    SDL_GL_DOUBLEBUFFER
-    SDL_GL_DEPTH_SIZE
-    SDL_GL_STENCIL_SIZE
-    SDL_GL_ACCUM_RED_SIZE
-    SDL_GL_ACCUM_GREEN_SIZE
-    SDL_GL_ACCUM_BLUE_SIZE
-    SDL_GL_ACCUM_ALPHA_SIZE
-    SDL_GL_STEREO
-    SDL_GL_MULTISAMPLEBUFFERS
-    SDL_GL_MULTISAMPLESAMPLES
-    SDL_GL_ACCELERATED_VISUAL
-    SDL_GL_SWAP_CONTROL
+    GL_RED_SIZE = iota
+    GL_GREEN_SIZE
+    GL_BLUE_SIZE
+    GL_ALPHA_SIZE
+    GL_BUFFER_SIZE
+    GL_DOUBLEBUFFER
+    GL_DEPTH_SIZE
+    GL_STENCIL_SIZE
+    GL_ACCUM_RED_SIZE
+    GL_ACCUM_GREEN_SIZE
+    GL_ACCUM_BLUE_SIZE
+    GL_ACCUM_ALPHA_SIZE
+    GL_STEREO
+    GL_MULTISAMPLEBUFFERS
+    GL_MULTISAMPLESAMPLES
+    GL_ACCELERATED_VISUAL
+    GL_SWAP_CONTROL
 )
 
 // flags for SDL_SetPalette() 
@@ -256,15 +257,15 @@ func VideoDriverName() (string)  {
 // If SDL is doing format conversion on the display surface, this
 // function returns the publicly visible surface, not the real video
 // surface.
-func GetVideoSurface() (* C.SDL_Surface ) {
+func getVideoSurface() (* C.SDL_Surface ) {
   return C.SDL_GetVideoSurface()
 }
 
 // This function returns a read-only pointer to information about the
-// video hardware.  If this is called before SDL_SetVideoMode(), the 'vfmt'
+// video hardware.  If this is called before SetVideoMode(), the 'vfmt'
 // member of the returned structure will contain the pixel format of the
 // "best" video mode.
-func GetVideoInfo() (* C.SDL_VideoInfo) { 
+func getVideoInfo() (* C.SDL_VideoInfo) { 
   return C.SDL_GetVideoInfo()
 }
 
@@ -272,7 +273,7 @@ func GetVideoInfo() (* C.SDL_VideoInfo) {
 // It returns 0 if the requested mode is not supported under any bit depth,
 // or returns the bits-per-pixel of the closest available mode with the
 // given width and height.  If this bits-per-pixel is different from the
-// one used when setting the video mode, SDL_SetVideoMode() will succeed,
+// one used when setting the video mode, SetVideoMode() will succeed,
 // but will emulate the requested bits-per-pixel with a shadow surface.
 //
 // The arguments to SDL_VideoModeOK() are the same ones you would pass to
@@ -349,7 +350,7 @@ func ListModes() {
 // flags of the returned surface to make sure that functionality is available.
 // SDL will fall back to reduced functionality if the exact flags you wanted
 // are not available.
-func SetVideoMode(width, height, bpp int, flags uint32) (* C.SDL_Surface) {
+func setVideoMode(width, height, bpp int, flags uint32) (* C.SDL_Surface) {
   return C.SDL_SetVideoMode(C.int(width), C.int(height), 
   C.int(bpp), C.Uint32(flags))
 } 
@@ -360,7 +361,7 @@ func SetVideoMode(width, height, bpp int, flags uint32) (* C.SDL_Surface) {
 // These functions should not be called while 'screen' is locked.
 // extern DECLSPEC void SDLCALL SDL_UpdateRects
 //		(SDL_Surface *screen, int numrects, SDL_Rect *rects);
-func UpdateRect(screen * C.SDL_Surface, x, y int32, w, h uint32) { 
+func updateRect(screen * C.SDL_Surface, x, y int32, w, h uint32) { 
   C.SDL_UpdateRect(screen, C.Sint32(x), C.Sint32(y), C.Uint32(w), C.Uint32(h))
 }
 
@@ -372,7 +373,7 @@ func UpdateRect(screen * C.SDL_Surface, x, y int32, w, h uint32) {
 // The SDL_DOUBLEBUF flag must have been passed to SDL_SetVideoMode() when
 // setting the video mode for this function to perform hardware flipping.
 // This function returns 0 if successful, or -1 if there was an error.
-func Flip(screen * C.SDL_Surface) { 
+func flip(screen * C.SDL_Surface) { 
   C.SDL_Flip(screen)
 }
 
@@ -448,17 +449,17 @@ func SetGamma(red, green, blue float) (int) {
 
 
 // Maps an RGB triple to an opaque pixel value for a given pixel format
-func MapRGB(format * C.SDL_PixelFormat, r, g, b uint) uint32 {
+func mapRGB(format * C.SDL_PixelFormat, r, g, b uint8) uint32 {
   return uint32(C.SDL_MapRGB(format, C.Uint8(r), C.Uint8(g), C.Uint8(b)))
 }
 
 // Maps an RGBA quadruple to a pixel value for a given pixel format
-func MapRGBA(format * C.SDL_PixelFormat, r, g, b, a uint) uint32 {
+func mapRGBA(format * C.SDL_PixelFormat, r, g, b, a uint8) uint32 {
   return uint32(C.SDL_MapRGBA(format, C.Uint8(r), C.Uint8(g), C.Uint8(b), C.Uint8(a)))
 }
  
 // Maps a pixel value into the RGB components for a given pixel format
-func GetRGB(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte) { 
+func getRGB(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte) { 
   var r, b, g uint8 
   pr := cbyteptr(&r)
   pb := cbyteptr(&b)
@@ -468,7 +469,7 @@ func GetRGB(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte) {
 }
 
 // Maps a pixel value into the RGBA components for a given pixel format
-func GetRGBA(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte, byte) { 
+func getRGBA(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte, byte) { 
   var r, b, g, a uint8 
   pr := cbyteptr(&r)
   pb := cbyteptr(&b)
@@ -510,7 +511,7 @@ func GetRGBA(format * C.SDL_PixelFormat, pixel uint32) (byte, byte, byte, byte) 
 // will be set in the flags member of the returned surface.  If for some
 // reason the surface could not be placed in video memory, it will not have
 // the SDL_HWSURFACE flag set, and will be created in system memory instead.
-func CreateRGBSurface(flags uint32, width, height, depth int, 
+func createRGBSurface(flags uint32, width, height, depth int, 
   rmask, gmask, bmask, amask uint32) (* C.SDL_Surface) { 
  return C.SDL_CreateRGBSurface(C.Uint32(flags), C.int(width), C.int(height), 
 	  C.int(depth),	C.Uint32(rmask), C.Uint32(gmask), 
@@ -525,7 +526,7 @@ func CreateRGBSurfaceFrom() {
 //			Uint32 Rmask, Uint32 Gmask, Uint32 Bmask, Uint32 Amask);
 
 // Frees the memory associated with the surface
-func FreeSurface(surface * C.SDL_Surface) { 
+func freeSurface(surface * C.SDL_Surface) { 
   C.SDL_FreeSurface(surface)
 }
 
@@ -546,11 +547,11 @@ func FreeSurface(surface * C.SDL_Surface) {
 // pairs, as critical system locks may be held during this time.
 //
 // SDL_LockSurface() returns 0, or -1 if the surface couldn't be locked.
-func LockSurface(surface * C.SDL_Surface) (int) { 
+func lockSurface(surface * C.SDL_Surface) (int) { 
   return(int(C.SDL_LockSurface(surface)))
 }
 
-func UnlockSurface(surface * C.SDL_Surface) { 
+func unlockSurface(surface * C.SDL_Surface) { 
   C.SDL_UnlockSurface(surface)
 }
 
@@ -584,7 +585,7 @@ func UnlockSurface(surface * C.SDL_Surface) {
 // and removes RLE acceleration if absent.
 // If 'flag' is 0, this function clears any current color key.
 // This function returns 0, or -1 if there was an error.
-func SetColorKey(surface * C.SDL_Surface, flag, key uint32) int { 
+func setColorKey(surface * C.SDL_Surface, flag, key uint32) int { 
   return int(C.SDL_SetColorKey(surface, C.Uint32(flag), C.Uint32(key)))
 }
 
@@ -601,7 +602,7 @@ func SetColorKey(surface * C.SDL_Surface, flag, key uint32) int {
 // surface; if SDL_RLEACCEL is not specified, the RLE accel will be removed.
 //
 // The 'alpha' parameter is ignored for surfaces that have an alpha channel.
-func SetAlpha(surface * C.SDL_Surface, flag uint32, alpha uint8) int { 
+func setAlpha(surface * C.SDL_Surface, flag uint32, alpha uint8) int { 
   return int(C.SDL_SetAlpha(surface, C.Uint32(flag), C.Uint8(alpha)))
 }
 
@@ -615,14 +616,14 @@ func SetAlpha(surface * C.SDL_Surface, flag uint32, alpha uint8) int {
 //
 // Note that blits are automatically clipped to the edges of the source
 // and destination surfaces.
-func SetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) (bool) { 
+func setClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) (bool) { 
   return i2b(int(C.SDL_SetClipRect(surface, rect)))
 }
 
 // Gets the clipping rectangle for the destination surface in a blit.
 // 'rect' must be a pointer to a valid rectangle which will be filled
 // with the correct values.
-func GetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) { 
+func getClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) { 
   C.SDL_GetClipRect(surface, rect)
 }
 
@@ -637,7 +638,7 @@ func GetClipRect(surface * C.SDL_Surface, rect * C.SDL_Rect) {
 // surface.
 //
 // This function is used internally by SDL_DisplayFormat().
-func ConvertSurface(src * C.SDL_Surface, fmt * C.SDL_PixelFormat, 
+func convertSurface(src * C.SDL_Surface, fmt * C.SDL_PixelFormat, 
   flags uint32) ( * C.SDL_Surface) {
   return C.SDL_ConvertSurface(src, fmt, C.Uint32(flags))
 }
@@ -709,7 +710,7 @@ func ConvertSurface(src * C.SDL_Surface, fmt * C.SDL_PixelFormat,
  
 // You should call SDL_BlitSurface() unless you know exactly how SDL
 // blitting works internally and how to use the other blit functions.
-func BlitSurface(src, dst * C.SDL_Surface, srcrect, dstrect *C.SDL_Rect) (int) {
+func blitSurface(src, dst * C.SDL_Surface, srcrect, dstrect *C.SDL_Rect) (int) {
   return int(C.SDL_UpperBlit(src, srcrect, dst, dstrect))
 }
 
@@ -720,20 +721,20 @@ func BlitSurface(src, dst * C.SDL_Surface, srcrect, dstrect *C.SDL_Rect) (int) {
 // The color should be a pixel of the format used by the surface, and 
 // can be generated by the SDL_MapRGB() function.
 // This function returns 0 on success, or -1 on error.
-func FillRect(dst * C.SDL_Surface, dstrect * C.SDL_Rect, color uint32) (int) { 
+func fillRect(dst * C.SDL_Surface, dstrect * C.SDL_Rect, color uint32) (int) { 
   return int(C.SDL_FillRect(dst, dstrect, C.Uint32(color)))
 }
 
 // This function takes a surface and copies it to a new surface of the
 // pixel format and colors of the video framebuffer, suitable for fast
-// blitting onto the display surface.  It calls SDL_ConvertSurface()
+// blitting onto the display surface.
 //
 // If you want to take advantage of hardware colorkey or alpha blit
 // acceleration, you should set the colorkey and alpha value before
 // calling this function.
 //
 // If the conversion fails or runs out of memory, it returns NULL
-func DisplayFormat(surface * C.SDL_Surface) (* C.SDL_Surface) { 
+func displayFormat(surface * C.SDL_Surface) (* C.SDL_Surface) { 
   return C.SDL_DisplayFormat(surface)
 }
 
@@ -747,7 +748,7 @@ func DisplayFormat(surface * C.SDL_Surface) (* C.SDL_Surface) {
 // calling this function.
 //
 // If the conversion fails or runs out of memory, it returns NULL
-func DisplayFormatAlpha(surface * C.SDL_Surface) (* C.SDL_Surface) { 
+func displayFormatAlpha(surface * C.SDL_Surface) (* C.SDL_Surface) { 
   return C.SDL_DisplayFormatAlpha(surface)
 }
  
@@ -842,7 +843,7 @@ func WM_SetCaption(title, icon string) {
 // It takes an icon surface, and a mask in MSB format.
 // If 'mask' is NULL, the entire icon surface will be used as the icon.
 // TODO: support mask 
-func WM_SetIcon(icon * C.SDL_Surface) { 
+func wm_SetIcon(icon * C.SDL_Surface) { 
   C.SDL_WM_SetIcon(icon, nil);
 }
 
@@ -885,4 +886,10 @@ const (
 func WM_GrabInput(mode SDL_GrabMode) (SDL_GrabMode) { 
   return SDL_GrabMode(C.SDL_WM_GrabInput(C.SDL_GrabMode(mode)))
 }
+
+
+// Wrappers
+ 
+
+
 

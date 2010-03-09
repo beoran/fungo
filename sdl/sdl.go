@@ -25,15 +25,25 @@ import "runtime"
 
 
 // Helper functions 
+// Calls C malloc
+func malloc(size int) (unsafe.Pointer) { 
+  return (unsafe.Pointer(C.malloc(C.size_t(size))))
+} 
+
+// Calls C free
+func free(ptr unsafe.Pointer) { 
+  C.free(ptr)
+} 
+
 // Allocates a string with the given byte length
 // don't forget a call to defer s.free() ! 
 func cstrNew(size int) (* C.char) {
-  return (*C.char)(unsafe.Pointer(C.malloc(C.size_t(size))))  
+  return (*C.char)(malloc(size))  
 }
 
 // free is a method on C char * strings to method to free the associated memory 
 func (self * C.char) free() {
-  C.free(unsafe.Pointer(self))
+  free(unsafe.Pointer(self))
 }
 
 /*
@@ -255,13 +265,11 @@ func Error(code Errorcode) {
 // colorkey for the surface.  You can enable RLE acceleration on the
 // surface afterwards by calling:
 // SDL_SetColorKey(image, SDL_RLEACCEL, image->format->colorkey);
-/*
-For some reason, this function is not compile dproperly by cgo.
-func ImgLoad(filename string) (* C.SDL_Surface) { 
+func imgLoad(filename string) (* C.SDL_Surface) { 
   cfile := cstr(filename) ; defer cfile.free()
   return C.IMG_Load(cfile);
 }
-*/
+
 
 // below not supported
 // extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadTyped_RW(SDL_RWops *src, int freesrc, char *type);

@@ -162,6 +162,7 @@ type Track struct {
   track * C.SDL_CDtrack
 }
 
+// Opens the numbered CD
 func OpenCD(id int) * CD {
   max   := CDNumDrives();
   if id > max { return nil }
@@ -172,6 +173,7 @@ func OpenCD(id int) * CD {
   return cd
 }
 
+// Returns the status of the CD
 func (cd * CD) Status() (CDstatus) {
   if cd.cd != nil {
     return CDStatus(cd.cd)
@@ -179,6 +181,7 @@ func (cd * CD) Status() (CDstatus) {
   return CD_ERROR
 }
 
+// Returns true if a CD is in the drive, false if not
 func (cd * CD) InDrive() (bool) {
   if cd.cd != nil {
     return CD_INDRIVE(cd.Status())
@@ -186,7 +189,7 @@ func (cd * CD) InDrive() (bool) {
   return false
 }
 
-
+// Retuens a textual description of the CD drive
 func (cd * CD) String() (string) {
   if cd.cd != nil {
     return CDName(int(cd.cd.id))
@@ -194,7 +197,7 @@ func (cd * CD) String() (string) {
   return "Uninitialised or Closed CD Drive."
 }
 
-
+// Closes the CD DRive, freeing associated memory
 func (cd * CD) Close() {
   if cd.cd != nil {
     CDClose(cd.cd)
@@ -202,18 +205,22 @@ func (cd * CD) Close() {
   }
 }
 
+// Resumes playing the CD
 func (cd * CD) Resume() {
   if cd.cd != nil {
     CDResume(cd.cd)
   }
 }
 
+// Plays the CD starting at the given index, 
+// and for duration given in length
 func (cd * CD) Play(start, length int) {
   if cd.cd != nil {
     CDPlay(cd.cd, start, length)
   }
 }
 
+// Ejects the CD
 func (cd * CD) Eject() {
   if cd.cd != nil {
     CDEject(cd.cd)
@@ -227,6 +234,7 @@ func (cd * CD) Stop() {
   }
 }
 
+// Returns the amount of tracks on the CD.
 func (cd * CD) CountTracks() int {
   if cd.cd != nil {
     return int(cd.cd.numtracks)
@@ -234,6 +242,7 @@ func (cd * CD) CountTracks() int {
   return -1
 }
 
+// Returns the current track of the CD
 func (cd * CD) CurrentTrack() int {
   if cd.cd != nil {
     return int(cd.cd.cur_track)
@@ -241,6 +250,7 @@ func (cd * CD) CurrentTrack() int {
   return -1
 }
 
+// Returns the currect frame of the CD
 func (cd * CD) CurrentFrame() int {
   if cd.cd != nil {
     return int(cd.cd.cur_frame)
@@ -248,11 +258,13 @@ func (cd * CD) CurrentFrame() int {
   return -1
 }
 
+// Plays the given amouunt of tracks
 func (cd * CD) PlayTracks(start_track, start_frame, ntracks, nframes int) {
   if cd.cd == nil { return}
   CDPlayTracks(cd.cd, start_track, start_frame, ntracks, nframes)
 }
 
+// Gets the track tracknr
 func (cd * CD) Track(tracknr int) (* Track) {
   if cd.cd != nil {
     if tracknr < 0 || tracknr > cd.CountTracks() { return nil }  
@@ -263,6 +275,7 @@ func (cd * CD) Track(tracknr int) (* Track) {
   return nil
 }
 
+// Gets the id of the track
 func (track * Track) ID() int { 
   if track.track == nil { return -1 }
   return int(track.track.id)
@@ -275,11 +288,13 @@ func (track * Track) Type() int {
 }
 */
 
+// Gets the length of the track
 func (track * Track) Length() int { 
   if track.track == nil { return -1 }
   return int(track.track.length)
 }
 
+// Gets the offset of the track
 func (track * Track) Offset() int { 
   if track.track == nil { return -1 }
   return int(track.track.offset)

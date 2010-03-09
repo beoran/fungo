@@ -244,7 +244,7 @@ const (
 // removed from the queue.
 // This function returns the number of events actually stored, or -1
 // if there was an error.  This function is thread-safe.
-func PeepEvents( events * C.SDL_Event, numevents int, 
+func peepEvents( events * C.SDL_Event, numevents int, 
 		 action SDL_eventaction, mask uint32) (int) {
   return int(C.SDL_PeepEvents(events, C.int(numevents), 
     C.SDL_eventaction(action), C.Uint32(mask)))
@@ -254,7 +254,7 @@ func PeepEvents( events * C.SDL_Event, numevents int,
 // Polls for currently pending events, and returns 1 if there are any pending
 // events, or 0 if there are none available.  If 'event' is not NULL, the next
 // event is removed from the queue and stored in that area.
-func PollEvent(event * C.SDL_Event) (int) { 
+func pollEvent(event * C.SDL_Event) (int) { 
   return int(C.SDL_PollEvent(event))
 }
   
@@ -262,14 +262,14 @@ func PollEvent(event * C.SDL_Event) (int) {
 // Waits indefinitely for the next available event, returning 1, or 0 if there
 // was an error while waiting for events.  If 'event' is not NULL, the next
 // event is removed from the queue and stored in that area.
-func WaitEvent(event * C.SDL_Event) (int) { 
+func waitEvent(event * C.SDL_Event) (int) { 
   return int(C.SDL_WaitEvent(event))
 }
  
 // Add an event to the event queue.
 // This function returns 0 on success, or -1 if the event queue was full
 // or there was some other error.
-func PushEvent(event * C.SDL_Event) (int) { 
+func pushEvent(event * C.SDL_Event) (int) { 
   return int(C.SDL_PushEvent(event))
 }
 
