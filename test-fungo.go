@@ -137,7 +137,19 @@ func TestError() {
   // fmt.Println(err2)
 }
 
+func TestSurface() {
+  sdl.Init(sdl.INIT_EVERYTHING)
+  screen := sdl.OpenScreen(640, 480, 32, 0) 
+  col    := screen.MapRGB(255, 255, 0);  
+  screen.Flip()
+  sdl.Delay(5000)  
+  screen.PutPixel32(10, 10, col)  
+  sdl.Delay(5000)  
+  sdl.Quit()
+}
+
 func main()	{
+  TestSurface()
   TestCpuinfo()
   TestKeyboard()
   TestInit()

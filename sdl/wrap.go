@@ -11,7 +11,7 @@ package sdl
 import "C"
 import "unsafe"
 import "runtime"
-
+import "fmt"
 // Wrap.go contains most high-level wrappers of the low level
 // C-interface functions
  
@@ -187,7 +187,7 @@ type Surface struct {
 func wrapSurface(surface * C.SDL_Surface) (* Surface) {
   if surface == nil { return nil }  
   result := &Surface{surface}
-  clean  := func(surf Surface) { surf.Free(); }
+  clean  := func(surf * Surface) { surf.Free(); }
   runtime.SetFinalizer(result, clean)
   return result
 }  
@@ -704,31 +704,33 @@ func (surface * Surface) PixelOK(x, y int16) (bool) {
 // Short for unsafe.Pointer
 type ptr unsafe.Pointer
 
-// Putpixel drawing primitives
-// Each of them is optimized for speed in a different ituation .They 
-// should be called only after calling Lock() on the surface,
-// They also do not do /any/ clipping or checking on x and y, so be 
-// sure to check them with PixelOK.
-// Puts a pixel to a surface with BPP 8   
-func (s * Surface) PutPixel8(x, y int16, color uint32) {
+// Helpers for the drawing primitives. They return a pointer to the 
+// location of the pixel
+
+// Returns a pointer that points to the location of the pixel 
+// at x and y for a surface s with bbp8
+// Does no checks of clipping!
+func (s * Surface) pixelptr8(x, y int16) (* uint8) {
   surface:= s.surface  
   pixels := uintptr(ptr(surface.pixels))
   offset := uintptr(y*(int16(surface.pitch)) + x)
-  ptr    := (* uint8)(ptr(pixels + offset))
-  *ptr    = uint8(color)
+  return (* uint8)(ptr(pixels + offset))
 }
 
-// Puts a pixel to a surface with BPP 16
-func (s * Surface) PutPixel16(x, y int16, color uint32) {
+// Returns a pointer that points to the location of the pixel 
+// at x and y for a surface s with bbp16
+// Does no checks of clipping!
+func (s * Surface) pixelptr16(x, y int16) (* uint16) {
   surface:= s.surface  
   pixels := uintptr(ptr(surface.pixels))
   offset := uintptr(y*(int16(surface.pitch) << 1) + x)
-  ptr    := (* uint16)(ptr(pixels + offset))
-  *ptr    = uint16(color)
+  return (* uint16)(ptr(pixels + offset))
 }
 
-// Puts a pixel to a surface with BPP 24. Relatively slow!
-func (s * Surface) PutPixel24(x, y int16, color uint32) {
+// Returns four pointers that point to the location of the 
+// r,g,b, and a channels of the pixel  at x and y for a surface s with bbp24,
+// in that respective order. Does no checks of clipping!
+func (s * Surface) pixelptr24(x, y int16) (*byte, *byte, *byte, *byte) {
   surface:= s.surface
   format := surface.format  
   pixels := uintptr(ptr(surface.pixels))
@@ -738,6 +740,43 @@ func (s * Surface) PutPixel24(x, y int16, color uint32) {
   gptr   := (*uint8)(ptr(ptrbase + uintptr(format.Gshift >> 3)))
   bptr   := (*uint8)(ptr(ptrbase + uintptr(format.Bshift >> 3)))
   aptr   := (*uint8)(ptr(ptrbase + uintptr(format.Ashift >> 3)))
+  return rptr, gptr, bptr, aptr
+}
+
+// Returns a pointer that points to the location of the pixel
+// at x and y for a surface s with bbp32
+// Does no checks of clipping
+func (s * Surface) pixelptr32(x, y int16) (*uint32) {
+  surface:= s.surface    
+  pixels := uintptr(ptr(surface.pixels))  
+  off    := int32(y*(int16(surface.pitch) << 2) + x)
+  offset := uintptr(off)
+  fmt.Printf("pixelptr32: %p %p, %d %d, %d %d\n", pixels, offset, off, 
+   surface.pitch, x, y)
+  return (* uint32)(ptr(pixels + offset))
+}
+
+// Putpixel drawing primitives
+// Each of them is optimized for speed in a different ituation .They 
+// should be called only after calling Lock() on the surface,
+// They also do not do /any/ clipping or checking on x and y, so be 
+// sure to check them with PixelOK.
+// Puts a pixel to a surface with BPP 8   
+func (s * Surface) PutPixel8(x, y int16, color uint32) {
+  ptr    := s.pixelptr8(x, y) 
+  *ptr    = uint8(color)
+}
+
+// Puts a pixel to a surface with BPP 16
+func (s * Surface) PutPixel16(x, y int16, color uint32) {
+  ptr    := s.pixelptr16(x, y)   
+  *ptr    = uint16(color)
+}
+
+// Puts a pixel to a surface with BPP 24. Relatively slow!
+func (s * Surface) PutPixel24(x, y int16, color uint32) {
+  format := s.surface.format
+  rptr, gptr, bptr, aptr := s.pixelptr24(x, y)
   *rptr   = uint8(color >> uint32(format.Rshift))
   *gptr   = uint8(color >> uint32(format.Gshift))
   *bptr   = uint8(color >> uint32(format.Bshift))
@@ -746,10 +785,7 @@ func (s * Surface) PutPixel24(x, y int16, color uint32) {
 
 // Puts a pixel to a surface with BPP 32
 func (s * Surface) PutPixel32(x, y int16, color uint32) {
-  surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch) << 2) + x)
-  ptr    := (* uint32)(ptr(pixels + offset))
+  ptr    := s.pixelptr32(x, y)
   *ptr    = color
 }
 
@@ -833,6 +869,17 @@ func (s * Surface) GetPixelBBP(x, y int16) (color uint32) {
   }
   return 0
 }
+
+// Blends the pixel with the one already there using alpha as a gradation
+/*
+func (s * Surface) BlendPixel8(x, y int16, color uint32, alpha uint8) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch)) + x)
+  ptr    := (* uint8)(ptr(pixels + offset))
+  return uint32(*ptr)
+}
+*/
 
 /*
 //==================================================================================
