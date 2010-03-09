@@ -94,7 +94,7 @@ func LoadMUS(res string) (* C.Mix_Music) {
 // Uint32 len);
 
 // Free an audio chunk previously loaded
-func FreeWave(wave * C.Mix_Chunk) {
+func FreeSound(wave * C.Mix_Chunk) {
   C.Mix_FreeChunk(wave)
 } 
  
@@ -450,9 +450,9 @@ type Mixer struct {
 // Channel type
 type Channel int
 
-// Wave type, that is, a short sample of sound. 
+// Sound type, that is, a short sample of sound. 
 // Many can play at the same time.  
-type Wave struct { 
+type Sound struct { 
   chunk * C.Mix_Chunk
   channel Channel
 }
@@ -483,8 +483,8 @@ func (music * Music) Play() {
 }
 
 // loads a wave file from a .wav or .ogg file 
-func LoadWave(filename string) (* Wave) {
-  result          := new(Wave)
+func LoadSound(filename string) (* Sound) {
+  result          := new(Sound)
   result.chunk     = LoadWAV(filename)
   result.channel   = -1
   if result.chunk == nil { return nil }
@@ -492,14 +492,14 @@ func LoadWave(filename string) (* Wave) {
 } 
 
 // Frees the mmemory associated with this wave
-func (wave * Wave) Free() {
+func (wave * Sound) Free() {
   if wave.chunk == nil { return }
-  FreeWave(wave.chunk)
+  FreeSound(wave.chunk)
 }
 
 // returns the channel the wave will play on, or -1 
 // if it will be played on the first available 
-func (wave * Wave) Channel() (Channel) {
+func (wave * Sound) Channel() (Channel) {
   return wave.channel
 }
 
@@ -507,7 +507,7 @@ func (wave * Wave) Channel() (Channel) {
 // if it will be played on the first available.
 // If the channel is not available, it will use -1 
 // by default 
-func (wave * Wave) SetChannel(channel Channel) (Channel) {
+func (wave * Sound) SetChannel(channel Channel) (Channel) {
   max := Channel(GroupAvailable(-1)) 
   if channel >= max || channel < -1 {
     channel = -1
@@ -517,7 +517,7 @@ func (wave * Wave) SetChannel(channel Channel) (Channel) {
 }
 
 // Plays the wave one time on it's channel 
-func (wave * Wave) Play() {
+func (wave * Sound) Play() {
   if wave.chunk == nil { return }
   PlayChannel(int(wave.channel), wave.chunk, 1)   
 }

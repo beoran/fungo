@@ -33,10 +33,20 @@ func NewRect(x, y int16, w, h uint16) (* Rect) {
 // To prevent problemw with memory management, 
 // we let use Go structures for Rect and Color
 // This converts the pointer from Go to SDL's C pointer
-func (rect *Rect) toSDL() (* C.SDL_Rect) {
+func (rect *Rect) ptoSDL() (* C.SDL_Rect) {
   return (* C.SDL_Rect)(unsafe.Pointer(rect))
 }  
   
+func (rect Rect) toSDL() (C.SDL_Rect) {
+  return *(*C.SDL_Rect)(unsafe.Pointer(&rect))
+}
+
+// wraps a rectangle
+func wrapRect(rect * C.SDL_Rect) (* Rect) {
+  return (* Rect)(unsafe.Pointer(rect))
+}
+
+
 /*  
 type Color struct { 
   R uint8
@@ -52,12 +62,13 @@ func NewColor(r, g, b uint8) (* Color) {
 }   
    
 // Converts struct to SDL struct of same layout  
-func (color *Color) toSDL() (* C.SDL_Color) {
-  return (* C.SDL_Color)(unsafe.Pointer(color))
+func (color Color) toSDL() (C.SDL_Color) {
+  return *(* C.SDL_Color)(unsafe.Pointer(&color))
 }
 
-func wrapRect(rect * C.SDL_Rect) (* Rect) {
-  return (* Rect)(unsafe.Pointer(rect))
+// Converts struct to SDL struct pointer  of same layout  
+func (color *Color) ptoSDL() (* C.SDL_Color) {
+  return (* C.SDL_Color)(unsafe.Pointer(color))
 }
 
 
@@ -317,6 +328,17 @@ func (surface * Surface) Free() {
   freeSurface(surface.surface)
 } 
 
+// Returns the width of the surface (as a int16) 
+func (surface * Surface) W16() int16 {
+  return int16(surface.surface.w)
+}
+
+// Returns the height of the surface (as a int16) 
+func (surface * Surface) H16() int16 {
+  return int16(surface.surface.w)
+}
+
+
 // Loads a surface from a .png, .jpg, .bmp or .xcf file. 
 // Remeber to call Display or DisplayAlpha on it to speed up 
 // it's blitting speed! 
@@ -382,7 +404,7 @@ func (surface * Surface) SetAlpha(flag uint32, alpha uint8) int {
 // useful for APIs that allow a nil rect to mean "all"  
 func nilOrRect(rect * Rect) (* C.SDL_Rect) {
   var sdlrect * C.SDL_Rect = nil
-  if  rect != nil { sdlrect = rect.toSDL() }
+  if  rect != nil { sdlrect = rect.ptoSDL() }
   return sdlrect
 }
 
@@ -474,16 +496,346 @@ func PollEvent() (* Event) {
   return event 
 }
 
-
-/*
-// Cgo can't access the "type" field of the SDL_Event union type directly.
-// This function casts the union into a minimal struct that contains only the
-// leading type byte.
-/*
-func eventType(evt *C.SDL_Event) byte {
-  return byte(((*struct {
-  _type C.Uint8
-  })(unsafe.Pointer(evt)))._type)
+// Pushes an event to the event queue
+func PushEvent(event * Event) {
+  pushEvent((*C.SDL_Event)(unsafe.Pointer(event)))
 }
-*/
+
+// Waits until an event is received and returns it
+func WaitEvent() (* Event) {
+  var event * Event
+  for { // ever 
+    event     = PollEvent()
+    if event != nil { break }
+  }
+  return event
+}
+
+// TTFont is a TrueType Font
+type TTFont struct {
+  font * C.TTF_Font
+} 
+
+// wraps the C SDL font into a TTFONT
+func wrapFont(cfont * C.TTF_Font) (* TTFont) {
+  if cfont == nil { return nil }
+  result := &TTFont{cfont}
+  clean  := func(f * TTFont) { f.Free() } 
+  runtime.SetFinalizer(result, clean)
+  return result
+}
+
+// Returns true if the font is in an unusable state
+func (font * TTFont) Destroyed() (bool) {
+  return font.font == nil 
+}
+
+// Releases the memory associated to this font
+func (font * TTFont) Free() {
+  if font.Destroyed() { return } 
+  TTFCloseFont(font.font)  
+}
+
+// Initializes the TTF engine once. Returns true if all is AOK.
+func initTTFOnce() (bool) {
+  if TTFWasInit() { return true; } 
+  res := TTFInit()
+  if res < 0 { return false } 
+  return true
+}
+
+// Loads a truetype font from the named file with the given point size. 
+// May return nil on failiure  
+func LoadTTFont(filename string, ptsize int) (* TTFont) {
+  initTTFOnce() // ensure ttf engine is initialized
+  return wrapFont(TTFOpenFont(filename, ptsize))
+}
+
+// Loads a truetype font from the named file with the given point size.
+// Can load a font from a multi font ttf file by passing the index 
+// May return nil on failiure  
+func LoadTTFontIndex(filename string, ptsize int, 
+      index int32) (* TTFont) {
+  initTTFOnce() // ensure ttf engine is initialized
+  return wrapFont(TTFOpenFontIndex(filename, ptsize, index))
+}
+
+
+// Get the style of the font
+func (font * TTFont) Style() (int) {
+  return TTFGetFontStyle(font.font)
+}
+
+// Set the style of the font
+func (font * TTFont) SetStyle(style int) (int) {
+  TTFSetFontStyle(font.font, style)
+  return font.Style()
+}
+
+// Get the total height of the font - usually equal to point size
+func (font * TTFont) Height() (int) {
+  return TTFFontHeight(font.font)
+}
+
+// Get the offset from the baseline to the top of the font
+// This is a positive value, relative to the baseline.
+func (font * TTFont) Ascent() (int) {
+  return TTFFontAscent(font.font)
+}
+
+// Get the offset from the baseline to the bottom of the font
+// This is a negative value, relative to the baseline.
+func (font * TTFont) Descent() (int) {
+  return TTFFontDescent(font.font)
+}
+
+// Get the recommended spacing between lines of text for this font
+func (font * TTFont) LineSkip() (int) {
+  return TTFFontLineSkip(font.font)
+}
  
+// Get the number of faces of the font
+func (font * TTFont) Faces() (int32) {
+  return TTFFontFaces(font.font)
+}
+
+// Returns true if the font is a monospaced fot, false if not.
+func (font * TTFont) IsFixedWidth() (bool) {
+  return TTFFontFaceIsFixedWidth(font.font)
+}
+
+// Returns the name of the font as a string 
+func (font * TTFont) String() (string) {
+  return TTFFontFamilyName(font.font)
+}
+
+// Returns the name of the font style as a string 
+func (font * TTFont) StyleName() (string) {
+  return TTFFontFaceStyleName(font.font)
+}
+
+// Get the metrics (dimensions) of a glyph
+// Retunrs minx, maxx, miny, maxy, advance in that order
+func (font * TTFont) Metrics(ch uint16) (int, int, int, int, int) {
+  return TTFGlyphMetrics(font.font, ch)
+}
+
+// Get the dimensions an UTF-8 encoded text would get when 
+// rendered with this font.
+// Returns width and height in that order.  
+func (font * TTFont) Size(text string) (int, int) {
+  return TTFTextSize(font.font, text)
+}
+
+// Create an 8-bit palettized surface and render the given text at
+// fast quality with the given font and color.  The 0 pixel is the
+// colorkey, giving a transparent background, and the 1 pixel is set
+// to the text color.
+// This function returns the new surface, or NULL if there was an error.
+// Works with UTF8 encoded strings.
+func (font * TTFont) RenderSolid(text string, color Color) (* Surface) { 
+  surf := TTFRenderSolid(font.font, text, color.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Create an 8-bit palettized surface and render the given glyph at
+// fast quality with the given font and color.  The 0 pixel is the
+// colorkey, giving a transparent background, and the 1 pixel is set
+// to the text color.  The glyph is rendered without any padding or
+// centering in the X direction, and aligned normally in the Y direction.
+// This function returns the new surface, or NULL if there was an error.
+func (font * TTFont) RenderGlyphSolid(ch uint16, 
+      color Color) (* Surface) { 
+  surf := TTFRenderGlyphSolid(font.font, ch, color.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Create an 8-bit palettized surface and render the given text at
+// high quality with the given font and colors.  The 0 pixel is background,
+// while other pixels have varying degrees of the foreground color.
+// This function returns the new surface, or NULL if there was an error.
+func (font * TTFont) RenderShaded(text string, 
+  fg, bg Color) (* Surface) { 
+  surf := TTFRenderShaded(font.font, text, fg.toSDL(), bg.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Create an 8-bit palettized surface and render the given glyph at
+// high quality with the given font and colors.  The 0 pixel is background,
+// while other pixels have varying degrees of the foreground color.
+// The glyph is rendered without any padding or centering in the X
+// direction, and aligned normally in the Y direction.
+// This function returns the new surface, or NULL if there was an error.
+func (font * TTFont) RenderGlyphShaded(ch uint16, 
+      fg, bg Color) (* Surface) { 
+  surf := TTFRenderGlyphShaded(font.font, ch, fg.toSDL(), bg.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Create a 32-bit ARGB surface and render the given text at high quality,
+// using alpha blending to dither the font with the given color.
+// This function returns the new surface, or NULL if there was an error.
+func (font * TTFont) RenderBlended(text string, 
+  color Color) (* Surface) { 
+  surf := TTFRenderBlended(font.font, text, color.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Create a 32-bit ARGB surface and render the given glyph at high quality,
+// using alpha blending to dither the font with the given color.
+// The glyph is rendered without any padding or centering in the X
+// direction, and aligned normally in the Y direction.
+// This function returns the new surface, or NULL if there was an error.
+func (font * TTFont) RenderGlyphBlended(ch uint16, 
+      color Color) (* Surface) { 
+  surf := TTFRenderGlyphBlended(font.font, ch, color.toSDL()) 
+  return wrapSurface(surf)
+}
+
+// Returns whether it's OK to put or get a pixel from these
+// coordinates or not 
+func (surface * Surface) PixelOK(x, y int16) (bool) {
+  if x < 0 || y < 0      { return false } 
+  if x >= surface.W16()  { return false }
+  if y >= surface.H16()  { return false }
+  return true
+}
+
+// Short for unsafe.Pointer
+type ptr unsafe.Pointer
+
+// Putpixel drawing primitives
+// Each of them is optimized for speed in a different ituation .They 
+// should be called only after calling Lock() on the surface,
+// They also do not do /any/ clipping or checking on x and y, so be 
+// sure to check them with PixelOK.
+// Puts a pixel to a surface with BPP 8   
+func (s * Surface) PutPixel8(x, y int16, color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch)) + x)
+  ptr    := (* uint8)(ptr(pixels + offset))
+  *ptr    = uint8(color)
+}
+
+// Puts a pixel to a surface with BPP 16
+func (s * Surface) PutPixel16(x, y int16, color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch) << 1) + x)
+  ptr    := (* uint16)(ptr(pixels + offset))
+  *ptr    = uint16(color)
+}
+
+// Puts a pixel to a surface with BPP 24. Relatively slow!
+func (s * Surface) PutPixel24(x, y int16, color uint32) {
+  surface:= s.surface
+  format := surface.format  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch)) + x*3)
+  ptrbase:= pixels + offset
+  rptr   := (*uint8)(ptr(ptrbase + uintptr(format.Rshift >> 3)))  
+  gptr   := (*uint8)(ptr(ptrbase + uintptr(format.Gshift >> 3)))
+  bptr   := (*uint8)(ptr(ptrbase + uintptr(format.Bshift >> 3)))
+  aptr   := (*uint8)(ptr(ptrbase + uintptr(format.Ashift >> 3)))
+  *rptr   = uint8(color >> uint32(format.Rshift))
+  *gptr   = uint8(color >> uint32(format.Gshift))
+  *bptr   = uint8(color >> uint32(format.Bshift))
+  *aptr   = uint8(color >> uint32(format.Ashift))
+}
+
+// Puts a pixel to a surface with BPP 32
+func (s * Surface) PutPixel32(x, y int16, color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch) << 2) + x)
+  ptr    := (* uint32)(ptr(pixels + offset))
+  *ptr    = color
+}
+
+// Also allow put pixel with precalculated y pitch offset??? 
+
+// Puts a pixel depending on the BytesPerPixel of the target surface
+// format. Still doesn't check the x and y coordinates for validity. 
+func (s * Surface) PutPixelBBP(x, y int16, color uint32) {
+  switch s.surface.format.BytesPerPixel {
+    case 1:
+      s.PutPixel8(x, y, color)
+    case 2:
+      s.PutPixel16(x, y, color)
+    case 3:
+      s.PutPixel24(x, y, color)
+    case 4:  
+      s.PutPixel32(x, y, color)
+  }
+}
+
+// Get pixel from
+// Gets a pixel from a surface with BPP 8
+func (s * Surface) GetPixel8(x, y int16) (color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch)) + x)
+  ptr    := (* uint8)(ptr(pixels + offset))
+  return uint32(*ptr)
+}
+
+// Gets a pixel from a surface with BPP 16
+func (s * Surface) GetPixel16(x, y int16) (color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch) << 1) + x)
+  ptr    := (* uint16)(ptr(pixels + offset))
+  return uint32(*ptr)   
+}
+
+// Gets a pixel from a surface with BPP 24. Relatively slow!
+func (s * Surface) GetPixel24(x, y int16) (color uint32) {
+  surface:= s.surface
+  format := surface.format  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch)) + x*3)
+  ptrbase:= pixels + offset
+  rptr   := (*uint8)(ptr(ptrbase + uintptr(format.Rshift >> 3)))  
+  gptr   := (*uint8)(ptr(ptrbase + uintptr(format.Gshift >> 3)))
+  bptr   := (*uint8)(ptr(ptrbase + uintptr(format.Bshift >> 3)))
+  aptr   := (*uint8)(ptr(ptrbase + uintptr(format.Ashift >> 3)))
+  color   = uint32(*rptr) << uint32(format.Rshift)
+  color  |= uint32(*gptr) << uint32(format.Gshift)
+  color  |= uint32(*bptr) << uint32(format.Bshift)
+  color  |= uint32(*aptr) << uint32(format.Ashift)
+  return color
+}
+
+// Gets a pixel from a surface with BPP 32
+func (s * Surface) GetPixel32(x, y int16) (color uint32) {
+  surface:= s.surface  
+  pixels := uintptr(ptr(surface.pixels))
+  offset := uintptr(y*(int16(surface.pitch) << 2) + x)
+  ptr    := (* uint32)(ptr(pixels + offset))
+  return uint32(*ptr)    
+}
+
+// Gets a pixel depending on the BytesPerPixel of the target surface
+// format. Still doesn't check the x and y coordinates for validity. 
+func (s * Surface) GetPixelBBP(x, y int16) (color uint32) {
+  switch s.surface.format.BytesPerPixel {
+    case 1:
+      return s.GetPixel8(x, y)
+    case 2:
+      return s.GetPixel16(x, y)
+    case 3:
+      return s.GetPixel24(x, y)
+    case 4:  
+      return s.GetPixel32(x, y)
+    default: 
+      return 0 
+  }
+  return 0
+}
+
+
+
+ 
+
+

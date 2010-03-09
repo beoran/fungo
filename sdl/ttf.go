@@ -17,12 +17,12 @@ const UNICODE_BOM_SWAPPED = 0xFFFE
 // This function tells the library whether UNICODE text is generally
 // byteswapped.  A UNICODE BOM character in a string will override
 // this setting for the remainder of that string.
-func TTF_ByteSwappedCode(swapped bool) { 
+func TTFByteSwappedCode(swapped bool) { 
   C.TTF_ByteSwappedUNICODE(C.int(b2i(swapped)))
 }
 
 // Initialize the TTF engine - returns 0 if successful, -1 on error 
-func TTF_Init() (int) { 
+func TTFInit() (int) { 
   return int(C.TTF_Init())
 }
 
@@ -30,13 +30,13 @@ func TTF_Init() (int) {
 // Some .fon fonts will have several sizes embedded in the file, so the
 // point size becomes the index of choosing which size.  If the value
 // is too high, the last indexed size will be the default.
-func TTF_OpenFont(file string, ptsize int) (* C.TTF_Font) {
+func TTFOpenFont(file string, ptsize int) (* C.TTF_Font) {
   cfile  := cstr(file)
   defer cfile.free()
   return C.TTF_OpenFont(cfile, C.int(ptsize))
 }
 
-func TTF_OpenFontIndex(file string, ptsize int, index int32) (* C.TTF_Font) { 
+func TTFOpenFontIndex(file string, ptsize int, index int32) (* C.TTF_Font) { 
   cfile := cstr(file) 
   defer cfile.free()
   return C.TTF_OpenFontIndex(cfile, C.int(ptsize), C.long(index));
