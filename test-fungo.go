@@ -4,6 +4,8 @@ import "fmt"
 import "os"
 import "time"
 import "fungo/sdl"
+import "fungo/draw"
+import "rand"
 // import "tamias"
 // import "fungo/sdl"
 /*
@@ -135,7 +137,8 @@ func TestSurface() {
   screen := sdl.OpenScreen(640, 480, 32, 0)
   white  := sdl.Color{255, 255, 255, 0};
   col    := screen.MapRGB(255, 255,   0);
-  colb   := screen.MapRGB(0, 0, 0);  
+  colb   := screen.MapRGB(0, 0, 0);
+  // colw   := screen.MapRGB(255, 255, 255);    
   fmt.Println("bit depth", screen.Format().BitsPerPixel())
   screen.FillRect(nil, colb)
   screen.Flip()
@@ -144,7 +147,7 @@ func TestSurface() {
   fmt.Println(screen.W(), screen.H())
   for x:= 0 ; x < screen.W(); x++ {
     for y:= 0 ; y < screen.H(); y++ {
-      screen.BlendPixel(x, y, col, 128)
+      screen.BlendPixel(x, y, col, 8)
     }  
   }
   // screen.Unlock()
@@ -162,10 +165,25 @@ func TestSurface() {
   
   img.BlitTo(screen, 20, 20)
   screen.Flip()
+  rand.Seed(time.Nanoseconds())
+  draw := draw.FromSDL(screen) 
+  draw.PutPixel(200, 200, rand.Uint32())
+  draw.PutPixel(200, 250, rand.Uint32())
+  draw.Line(200, 200, 200, 250, rand.Uint32())
+  draw.PutPixel(300, 300, rand.Uint32())
+  draw.PutPixel(350, 300, rand.Uint32())
+  draw.Line(300, 300, 350, 300, rand.Uint32())
+  draw.PutPixel(400, 400, rand.Uint32())
+  draw.PutPixel(450, 450, rand.Uint32())
+  draw.Line(400, 400, 410, 450, rand.Uint32())
+  draw.Circle(400, 400, 50, rand.Uint32())
+  draw.Ellipse(300, 300, 50, 100, rand.Uint32())
+  screen.Flip()
+  
   for {
     ev := sdl.PollEvent()
     if ev == nil { continue }  
-    fmt.Println("Event type:", ev.Type)
+    // fmt.Println("Event type:", ev.Type)
     kb := ev.Keyboard() 
     if kb != nil {  
       fmt.Println(kb); 
