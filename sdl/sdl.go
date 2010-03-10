@@ -27,7 +27,7 @@ import "runtime"
 // Helper functions 
 // Calls C malloc
 func malloc(size int) (unsafe.Pointer) { 
-  return (unsafe.Pointer(C.malloc(C.size_t(size))))
+  return (unsafe.Pointer(C.calloc(C.size_t(size), C.size_t(1))))
 } 
 
 // Calls C free
@@ -54,8 +54,24 @@ func (self * C.int) free() {
 */
 // cstring converts a string to a C string. This allocates memory, 
 // so don't forget to add a "defer s.free()"
-func cstr(self string) (*C.char) {
-  return C.CString(self)
+func cstr(self string) (*C.char) {  
+  buf := cstrNew(len(self) + 1)
+  // Allocate buffer 
+  if buf == nil { panic("Could not allocate memory for string") }
+  // Some nice pointer math   
+  for i:=0 ; i < len(self) ; i ++ {
+    ch  := self[i]
+    pto := (*byte)(ptr(uintptr(ptr(buf)) + uintptr(i)))
+    *pto = ch
+  }
+  // Don't forget to zero-terminate
+  ptoe := (*byte)(ptr(uintptr(ptr(buf)) + uintptr(len(self))))
+  *ptoe = byte(0)
+   
+  return buf
+  
+  // Strangely enough, C.String does NOT work for me. :p
+  // return C.CString(self)
 }
 
 // Converts an int pointer to a C.int pointer

@@ -31,8 +31,7 @@ func TTFInit() (int) {
 // point size becomes the index of choosing which size.  If the value
 // is too high, the last indexed size will be the default.
 func TTFOpenFont(file string, ptsize int) (* C.TTF_Font) {
-  cfile  := cstr(file)
-  defer cfile.free()
+  cfile  := cstr(file) ; defer cfile.free()
   return C.TTF_OpenFont(cfile, C.int(ptsize))
 }
 

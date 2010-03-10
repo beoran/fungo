@@ -11,7 +11,7 @@ package sdl
 import "C"
 import "unsafe"
 import "runtime"
-import "fmt"
+// import "fmt"
 // Wrap.go contains most high-level wrappers of the low level
 // C-interface functions
  
@@ -358,6 +358,16 @@ func (screen * Surface) Flip() {
   flip(screen.surface)
 } 
 
+// Gets the amount of bits per pixel of the format of this surface
+func (surface * Surface) BitsPerPixel() uint8 {
+  return uint8(surface.surface.format.BitsPerPixel)
+} 
+ 
+// Gets the amount of bytes per pixel of the format of this surface 
+func (surface * Surface) BytesPerPixel() uint8 {
+  return uint8(surface.surface.format.BytesPerPixel)
+} 
+
 // Maps the color with the given r, g, b components to the color format
 // of this surface
 func (surface * Surface) MapRGB(r, g, b uint8) uint32 {
@@ -369,6 +379,17 @@ func (surface * Surface) MapRGB(r, g, b uint8) uint32 {
 func (surface * Surface) MapRGBA(r, g, b, a uint8) uint32 {
   return mapRGBA(surface.surface.format, r, g, b, a)
 }
+
+// Gets the components of the given color
+func (surface * Surface) GetRGB(color uint32) (r, g, b uint8)  {
+  return getRGB(surface.surface.format, color)
+}
+
+// Gets the components of the given color
+func (surface * Surface) GetRGBA(color uint32) (r, g, b, a uint8) {
+  return getRGBA(surface.surface.format, color)
+}
+
 
 // Locks the surface for duirect drawuing to it's pixels 
 // Does nothing if it's not needed to lock this surface
@@ -421,6 +442,14 @@ func (src * Surface) BlitRect(dst * Surface, srcrect, dstrect *Rect) (int) {
   sdlsrcrect := nilOrRect(srcrect)
   sdldstrect := nilOrRect(dstrect)
   return blitSurface(src.surface, dst.surface, sdlsrcrect, sdldstrect)
+}
+
+// Blits the entire src surface to the dst surface 
+// using x, and y as the coordinates of the upper left corner
+func (src * Surface) BlitTo(dst * Surface, x, y int) {
+  rect    := Rect{ int16(x), int16(y), 0, 0}
+  dstrect := rect.toSDL()  
+  blitSurface(src.surface, dst.surface, nil, &dstrect)
 }
 
 // This function performs a fast fill of the given rectangle with 'color'
@@ -493,7 +522,7 @@ func PollEvent() (* Event) {
   event := &Event{}
   ok    := pollEvent((*C.SDL_Event)(unsafe.Pointer(event)))
   if ok == 0 { return nil; } 
-  return event 
+  return event
 }
 
 // Pushes an event to the event queue
@@ -510,6 +539,102 @@ func WaitEvent() (* Event) {
   }
   return event
 }
+
+// converts the event to the right type, or returns nil if it's
+// not of this type 
+func (event *Event) Keyboard() *KeyboardEvent {
+  if event.Type==KEYUP || event.Type==KEYDOWN {
+      return (*KeyboardEvent)(ptr(event))
+  } 
+  return nil;
+}
+ 
+func (event *Event) MouseButton() *MouseButtonEvent {
+  if event.Type==MOUSEBUTTONDOWN || event.Type==MOUSEBUTTONUP {
+      return (*MouseButtonEvent)(ptr(event));
+  }
+  return nil;
+}
+ 
+func (event *Event) MouseMotion() *MouseMotionEvent {
+    if event.Type==MOUSEMOTION {
+      return (*MouseMotionEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) Active() *ActiveEvent {
+    if event.Type==ACTIVEEVENT  {
+      return (*ActiveEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) JoyAxis() *JoyAxisEvent {
+    if event.Type==JOYAXISMOTION  {
+      return (*JoyAxisEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) JoyBall() *JoyBallEvent {
+    if event.Type==JOYBALLMOTION {
+      return (*JoyBallEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) JoyHat() *JoyHatEvent {
+    if(event.Type==JOYHATMOTION) {
+      return (*JoyHatEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) JoyButton() *JoyButtonEvent {
+    if event.Type==JOYBUTTONDOWN || event.Type == JOYBUTTONUP  {
+      return (*JoyButtonEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) Resize() *ResizeEvent {
+    if event.Type==VIDEORESIZE {
+      return (*ResizeEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) Expose() *ExposeEvent {
+    if event.Type==VIDEOEXPOSE {
+      return (*ExposeEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) Quit() *QuitEvent {
+    if event.Type==QUIT {
+      return (*QuitEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) User() *UserEvent {
+    if event.Type== USEREVENT {
+      return (*UserEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+func (event *Event) SysWM() *SysWMEvent {
+    if event.Type == SYSWMEVENT {
+      return (*SysWMEvent)(ptr(event));
+    } 
+    return nil;
+} 
+
+
+
 
 // TTFont is a TrueType Font
 type TTFont struct {
@@ -548,7 +673,8 @@ func initTTFOnce() (bool) {
 // May return nil on failiure  
 func LoadTTFont(filename string, ptsize int) (* TTFont) {
   initTTFOnce() // ensure ttf engine is initialized
-  return wrapFont(TTFOpenFont(filename, ptsize))
+  fnt := TTFOpenFont(filename, ptsize)
+  return wrapFont(fnt)
 }
 
 // Loads a truetype font from the named file with the given point size.
@@ -692,13 +818,32 @@ func (font * TTFont) RenderGlyphBlended(ch uint16,
   return wrapSurface(surf)
 }
 
-// Returns whether it's OK to put or get a pixel from these
-// coordinates or not 
-func (surface * Surface) PixelOK(x, y int16) (bool) {
-  if x < 0 || y < 0      { return false } 
-  if x >= surface.W16()  { return false }
-  if y >= surface.H16()  { return false }
-  return true
+// Returns true if the pixel is outside the image boundaries
+// and lay /not/ be drawn to or read from using the PutPixelXXX
+// GetPixelXXX and BlendPixelXXX series of functions.
+// Returns false if the pixel is safe to draw to.
+// This may seeem conterintuitive, but normal use will be
+// if surf.PixelOutside(x, y) { return }    
+func (surface * Surface) PixelOutside(x, y int) (bool) {
+  if x < 0 || y < 0    { return true } 
+  if x >= surface.W()  { return true }
+  if y >= surface.H()  { return true }
+  return false
+}
+
+// Returns true if the pixel lies outside the clipping rectangle
+// returns false if not so and it may be drawn
+func (surface * Surface) PixelClip(x, y int) (bool) {
+  cliprect := surface.surface.clip_rect
+  minx     := int(cliprect.x)
+  miny     := int(cliprect.y)
+  maxx     := int(cliprect.x) + int(cliprect.w)
+  maxy     := int(cliprect.y) + int(cliprect.h)
+  if x < minx   { return true }
+  if y < miny   { return true }
+  if x >= maxx  { return true }
+  if y >= maxy  { return true }
+  return false
 }
 
 // Short for unsafe.Pointer
@@ -707,34 +852,41 @@ type ptr unsafe.Pointer
 // Helpers for the drawing primitives. They return a pointer to the 
 // location of the pixel
 
+// Basically, the pixel is always located at  
+// uintptr((y*(int(surface.pitch)) + x * bytesperpixel)) offset
+// from the surface.pixels pointer
+// only the case of 24 bits is more complicated 
+// See http://www.libsdl.org/cgi/docwiki.cgi/Pixel_Access
+// for more reference. 
+
 // Returns a pointer that points to the location of the pixel 
 // at x and y for a surface s with bbp8
-// Does no checks of clipping!
-func (s * Surface) pixelptr8(x, y int16) (* uint8) {
+// Does no checks for validity of x and y and no clipping!
+func (s * Surface) pixelptr8(x, y int) (* uint8) {
   surface:= s.surface  
   pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch)) + x)
+  offset := uintptr(y*(int(surface.pitch)) + x)
   return (* uint8)(ptr(pixels + offset))
 }
 
 // Returns a pointer that points to the location of the pixel 
 // at x and y for a surface s with bbp16
 // Does no checks of clipping!
-func (s * Surface) pixelptr16(x, y int16) (* uint16) {
+func (s * Surface) pixelptr16(x, y int) (* uint16) {
   surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch) << 1) + x)
+  pixels := uintptr(ptr(surface.pixels))  
+  offset := uintptr((y*(int(surface.pitch)) + x<<1))
   return (* uint16)(ptr(pixels + offset))
 }
 
 // Returns four pointers that point to the location of the 
 // r,g,b, and a channels of the pixel  at x and y for a surface s with bbp24,
 // in that respective order. Does no checks of clipping!
-func (s * Surface) pixelptr24(x, y int16) (*byte, *byte, *byte, *byte) {
+func (s * Surface) pixelptr24(x, y int) (*byte, *byte, *byte, *byte) {
   surface:= s.surface
   format := surface.format  
   pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch)) + x*3)
+  offset := uintptr(y*(int(surface.pitch)) + x*3)
   ptrbase:= pixels + offset
   rptr   := (*uint8)(ptr(ptrbase + uintptr(format.Rshift >> 3)))  
   gptr   := (*uint8)(ptr(ptrbase + uintptr(format.Gshift >> 3)))
@@ -746,13 +898,13 @@ func (s * Surface) pixelptr24(x, y int16) (*byte, *byte, *byte, *byte) {
 // Returns a pointer that points to the location of the pixel
 // at x and y for a surface s with bbp32
 // Does no checks of clipping
-func (s * Surface) pixelptr32(x, y int16) (*uint32) {
+func (s * Surface) pixelptr32(x, y int) (*uint32) {
   surface:= s.surface    
   pixels := uintptr(ptr(surface.pixels))  
-  off    := int32(y*(int16(surface.pitch) << 2) + x)
-  offset := uintptr(off)
-  fmt.Printf("pixelptr32: %p %p, %d %d, %d %d\n", pixels, offset, off, 
-   surface.pitch, x, y)
+  offset := uintptr((y*(int(surface.pitch)) + x<<2)) 
+  // y * int(self.pitch) + x*4, so we use x << 2
+  //fmt.Printf("pixelptr32: %p %d, %d %d, %d %d\n", pixels, offset,  
+  //surface.pitch, x, y)
   return (* uint32)(ptr(pixels + offset))
 }
 
@@ -762,19 +914,19 @@ func (s * Surface) pixelptr32(x, y int16) (*uint32) {
 // They also do not do /any/ clipping or checking on x and y, so be 
 // sure to check them with PixelOK.
 // Puts a pixel to a surface with BPP 8   
-func (s * Surface) PutPixel8(x, y int16, color uint32) {
+func (s * Surface) RawPutPixel8(x, y int, color uint32) {
   ptr    := s.pixelptr8(x, y) 
   *ptr    = uint8(color)
 }
 
 // Puts a pixel to a surface with BPP 16
-func (s * Surface) PutPixel16(x, y int16, color uint32) {
+func (s * Surface) RawPutPixel16(x, y int, color uint32) {
   ptr    := s.pixelptr16(x, y)   
   *ptr    = uint16(color)
 }
 
 // Puts a pixel to a surface with BPP 24. Relatively slow!
-func (s * Surface) PutPixel24(x, y int16, color uint32) {
+func (s * Surface) RawPutPixel24(x, y int, color uint32) {
   format := s.surface.format
   rptr, gptr, bptr, aptr := s.pixelptr24(x, y)
   *rptr   = uint8(color >> uint32(format.Rshift))
@@ -784,7 +936,7 @@ func (s * Surface) PutPixel24(x, y int16, color uint32) {
 }
 
 // Puts a pixel to a surface with BPP 32
-func (s * Surface) PutPixel32(x, y int16, color uint32) {
+func (s * Surface) RawPutPixel32(x, y int, color uint32) {
   ptr    := s.pixelptr32(x, y)
   *ptr    = color
 }
@@ -793,49 +945,36 @@ func (s * Surface) PutPixel32(x, y int16, color uint32) {
 
 // Puts a pixel depending on the BytesPerPixel of the target surface
 // format. Still doesn't check the x and y coordinates for validity. 
-func (s * Surface) PutPixelBBP(x, y int16, color uint32) {
+func (s * Surface) RawPutPixelBBP(x, y int, color uint32) {
   switch s.surface.format.BytesPerPixel {
     case 1:
-      s.PutPixel8(x, y, color)
+      s.RawPutPixel8(x, y, color)
     case 2:
-      s.PutPixel16(x, y, color)
+      s.RawPutPixel16(x, y, color)
     case 3:
-      s.PutPixel24(x, y, color)
+      s.RawPutPixel24(x, y, color)
     case 4:  
-      s.PutPixel32(x, y, color)
+      s.RawPutPixel32(x, y, color)
   }
 }
 
 // Get pixel from
 // Gets a pixel from a surface with BPP 8
-func (s * Surface) GetPixel8(x, y int16) (color uint32) {
-  surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch)) + x)
-  ptr    := (* uint8)(ptr(pixels + offset))
+func (s * Surface) RawGetPixel8(x, y int) (color uint32) {
+  ptr    := s.pixelptr8(x, y)
   return uint32(*ptr)
 }
 
 // Gets a pixel from a surface with BPP 16
-func (s * Surface) GetPixel16(x, y int16) (color uint32) {
-  surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch) << 1) + x)
-  ptr    := (* uint16)(ptr(pixels + offset))
+func (s * Surface) RawGetPixel16(x, y int) (color uint32) {
+  ptr    := s.pixelptr16(x, y)
   return uint32(*ptr)   
 }
 
 // Gets a pixel from a surface with BPP 24. Relatively slow!
-func (s * Surface) GetPixel24(x, y int16) (color uint32) {
-  surface:= s.surface
-  format := surface.format  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch)) + x*3)
-  ptrbase:= pixels + offset
-  rptr   := (*uint8)(ptr(ptrbase + uintptr(format.Rshift >> 3)))  
-  gptr   := (*uint8)(ptr(ptrbase + uintptr(format.Gshift >> 3)))
-  bptr   := (*uint8)(ptr(ptrbase + uintptr(format.Bshift >> 3)))
-  aptr   := (*uint8)(ptr(ptrbase + uintptr(format.Ashift >> 3)))
+func (s * Surface) RawGetPixel24(x, y int) (color uint32) {
+  format := s.surface.format 
+  rptr, gptr, bptr, aptr := s.pixelptr24(x, y)
   color   = uint32(*rptr) << uint32(format.Rshift)
   color  |= uint32(*gptr) << uint32(format.Gshift)
   color  |= uint32(*bptr) << uint32(format.Bshift)
@@ -844,158 +983,337 @@ func (s * Surface) GetPixel24(x, y int16) (color uint32) {
 }
 
 // Gets a pixel from a surface with BPP 32
-func (s * Surface) GetPixel32(x, y int16) (color uint32) {
-  surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch) << 2) + x)
-  ptr    := (* uint32)(ptr(pixels + offset))
+func (s * Surface) RawGetPixel32(x, y int) (color uint32) {
+  ptr    := s.pixelptr8(x, y)
   return uint32(*ptr)    
 }
 
 // Gets a pixel depending on the BytesPerPixel of the target surface
 // format. Still doesn't check the x and y coordinates for validity. 
-func (s * Surface) GetPixelBBP(x, y int16) (color uint32) {
+func (s * Surface) RawGetPixelBBP(x, y int) (color uint32) {
   switch s.surface.format.BytesPerPixel {
     case 1:
-      return s.GetPixel8(x, y)
+      return s.RawGetPixel8(x, y)
     case 2:
-      return s.GetPixel16(x, y)
+      return s.RawGetPixel16(x, y)
     case 3:
-      return s.GetPixel24(x, y)
+      return s.RawGetPixel24(x, y)
     case 4:  
-      return s.GetPixel32(x, y)
+      return s.RawGetPixel32(x, y)
     default: 
       return 0 
   }
   return 0
 }
 
-// Blends the pixel with the one already there using alpha as a gradation
-/*
-func (s * Surface) BlendPixel8(x, y int16, color uint32, alpha uint8) {
-  surface:= s.surface  
-  pixels := uintptr(ptr(surface.pixels))
-  offset := uintptr(y*(int16(surface.pitch)) + x)
-  ptr    := (* uint8)(ptr(pixels + offset))
-  return uint32(*ptr)
+// Helps blending two colors 
+func helpBlend(old, color, 
+  rmask, gmask, bmask, amask, alpha uint32) (result uint32) {
+  oldr := old & rmask
+  oldg := old & gmask
+  oldb := old & bmask
+  olda := old & amask
+  colr := color & rmask
+  colg := color & gmask
+  colb := color & bmask
+  cola := color & amask
+  // we add to every component
+  // (new - old) * (alpha / 256) 
+  // ((new - old) * alpha) >> 8)
+  r    := (oldr + (((colr - oldr) * alpha) >> 8)) & rmask 
+  g    := (oldg + (((colg - oldg) * alpha) >> 8)) & gmask
+  b    := (oldb + (((colb - oldb) * alpha) >> 8)) & bmask
+  a    := uint32(0)
+  if amask > 0  {
+    a    = (olda + (((cola - olda) * alpha) >> 8)) & amask
+  }
+  return  r | g | b | a
 }
-*/
 
-/*
-//==================================================================================
-// Put pixel with alpha blending
-//==================================================================================
-void _PutPixelAlpha(SDL_Surface *surface, Sint16 x, Sint16 y, Uint32 color, Uint8 alpha)
-{
-  if(x>=sge_clip_xmin(surface) && x<=sge_clip_xmax(surface) && y>=sge_clip_ymin(surface) && y<=sge_clip_ymax(surface)){
-    Uint32 Rmask = surface->format->Rmask, Gmask = surface->format->Gmask, Bmask = surface->format->Bmask, Amask = surface->format->Amask;
-    Uint32 R,G,B,A=0;
-  
-    switch (surface->format->BytesPerPixel) {
-      case 1: { // Assuming 8-bpp 
-        if( alpha == 255 ){
-          *((Uint8 *)surface->pixels + y*surface->pitch + x) = color;
-        }else{
-          Uint8 *pixel = (Uint8 *)surface->pixels + y*surface->pitch + x;
-          
-          Uint8 dR = surface->format->palette->colors[*pixel].r;
-          Uint8 dG = surface->format->palette->colors[*pixel].g;
-          Uint8 dB = surface->format->palette->colors[*pixel].b;
-          Uint8 sR = surface->format->palette->colors[color].r;
-          Uint8 sG = surface->format->palette->colors[color].g;
-          Uint8 sB = surface->format->palette->colors[color].b;
-          
-          dR = dR + ((sR-dR)*alpha >> 8);
-          dG = dG + ((sG-dG)*alpha >> 8);
-          dB = dB + ((sB-dB)*alpha >> 8);
-        
-          *pixel = SDL_MapRGB(surface->format, dR, dG, dB);
-        }
-      }
-      break;
+// Helps blending one component of a color
+func helpBlendComponent(oldc, newc, alpha uint8) (uint8) {
+  return oldc + (((newc-oldc)*alpha) >> 8)
+}
 
-      case 2: { // Probably 15-bpp or 16-bpp    
-        if( alpha == 255 ){
-          *((Uint16 *)surface->pixels + y*surface->pitch/2 + x) = color;
-        }else{
-          Uint16 *pixel = (Uint16 *)surface->pixels + y*surface->pitch/2 + x;
-          Uint32 dc = *pixel;
-        
-          R = ((dc & Rmask) + (( (color & Rmask) - (dc & Rmask) ) * alpha >> 8)) & Rmask;
-          G = ((dc & Gmask) + (( (color & Gmask) - (dc & Gmask) ) * alpha >> 8)) & Gmask;
-          B = ((dc & Bmask) + (( (color & Bmask) - (dc & Bmask) ) * alpha >> 8)) & Bmask;
-          if( Amask )
-            A = ((dc & Amask) + (( (color & Amask) - (dc & Amask) ) * alpha >> 8)) & Amask;
+// Returns the color masks of this surface's format in order r,g,b,a
+func (s * Surface) ColorMasks() (uint32, uint32, uint32, uint32) {
+  f      := s.surface.format
+  return uint32(f.Rmask), uint32(f.Gmask), 
+         uint32(f.Bmask), uint32(f.Amask)
+}
 
-          *pixel= R | G | B | A;
-        }
-      }
-      break;
+// Blends a pixel with the one already there to a surface with BPP 8
+// taking into account the value of alpha
+func (s * Surface) RawBlendPixel8(x, y int, 
+  color uint32, alpha uint8) {    
+  ptr    := s.pixelptr8(x, y)
+  old    := uint32(*ptr)
+  oldr, oldg, oldb := s.GetRGB(old)
+  // Messing with the palette would probably be faster, 
+  // but it's cleaner to do it like this.
+  colr, colg, colb := s.GetRGB(color)
+  newr   := helpBlendComponent(oldr, colr, alpha)
+  newg   := helpBlendComponent(oldg, colg, alpha)
+  newb   := helpBlendComponent(oldb, colb, alpha)  
+  newcol := s.MapRGB(newr, newg, newb)
+  // And we have to do the same for the new color anyway, so... 
+  *ptr    = uint8(newcol)
+}
 
-      case 3: { // Slow 24-bpp mode, usually not used 
-        Uint8 *pix = (Uint8 *)surface->pixels + y * surface->pitch + x*3;
-        Uint8 rshift8=surface->format->Rshift/8;
-        Uint8 gshift8=surface->format->Gshift/8;
-        Uint8 bshift8=surface->format->Bshift/8;
-        Uint8 ashift8=surface->format->Ashift/8;
-        
-        
-        if( alpha == 255 ){
-            *(pix+rshift8) = color>>surface->format->Rshift;
-            *(pix+gshift8) = color>>surface->format->Gshift;
-            *(pix+bshift8) = color>>surface->format->Bshift;
-          *(pix+ashift8) = color>>surface->format->Ashift;
-        }else{
-          Uint8 dR, dG, dB, dA=0;
-          Uint8 sR, sG, sB, sA=0;
-          
-          pix = (Uint8 *)surface->pixels + y * surface->pitch + x*3;
-          
-          dR = *((pix)+rshift8); 
-                dG = *((pix)+gshift8);
-                dB = *((pix)+bshift8);
-          dA = *((pix)+ashift8);
-          
-          sR = (color>>surface->format->Rshift)&0xff;
-          sG = (color>>surface->format->Gshift)&0xff;
-          sB = (color>>surface->format->Bshift)&0xff;
-          sA = (color>>surface->format->Ashift)&0xff;
-          
-          dR = dR + ((sR-dR)*alpha >> 8);
-          dG = dG + ((sG-dG)*alpha >> 8);
-          dB = dB + ((sB-dB)*alpha >> 8);
-          dA = dA + ((sA-dA)*alpha >> 8);
 
-          *((pix)+rshift8) = dR; 
-                *((pix)+gshift8) = dG;
-                *((pix)+bshift8) = dB;
-          *((pix)+ashift8) = dA;
-        }
-      }
-      break;
+// Blends a pixel a pixel from a surface with BPP 24, taking into
+// consideration the value of alpha. Relatively slow!
+func (s * Surface) RawBlendPixel24(x, y int, color uint32, alpha uint8) {
+  format := s.surface.format 
+  rptr, gptr, bptr, aptr := s.pixelptr24(x, y)
+  oldr   := *rptr
+  oldg   := *gptr
+  oldb   := *bptr
+  olda   := *aptr
+  colr   := uint8((color >> uint32(format.Rshift)) & 0xff)
+  colg   := uint8((color >> uint32(format.Gshift)) & 0xff)
+  colb   := uint8((color >> uint32(format.Bshift)) & 0xff)
+  cola   := uint8((color >> uint32(format.Ashift)) & 0xff)
+  newr   := helpBlendComponent(oldr, colr, alpha)
+  newg   := helpBlendComponent(oldg, colg, alpha)
+  newb   := helpBlendComponent(oldb, colb, alpha)
+  newa   := helpBlendComponent(olda, cola, alpha)
+  *rptr   = uint8(newr)
+  *gptr   = uint8(newg)
+  *bptr   = uint8(newb)
+  *aptr   = uint8(newa)  
+}
 
-      case 4: { // Probably 32-bpp 
-        if( alpha == 255 ){
-          *((Uint32 *)surface->pixels + y*surface->pitch/4 + x) = color;
-        }else{
-          Uint32 *pixel = (Uint32 *)surface->pixels + y*surface->pitch/4 + x;
-          Uint32 dc = *pixel;
-      
-          R = ((dc & Rmask) + (( (color & Rmask) - (dc & Rmask) ) * alpha >> 8)) & Rmask;
-          G = ((dc & Gmask) + (( (color & Gmask) - (dc & Gmask) ) * alpha >> 8)) & Gmask;
-          B = ((dc & Bmask) + (( (color & Bmask) - (dc & Bmask) ) * alpha >> 8)) & Bmask;
-          if( Amask )
-            A = ((dc & Amask) + (( (color & Amask) - (dc & Amask) ) * alpha >> 8)) & Amask;
-          
-          *pixel = R | G | B | A;
-        }
-      }
-      break;
-    }
+// Blends a pixel with the one already there to a surface with BPP 16
+// taking into account the value of alpha
+func (s * Surface) RawBlendPixel16(x, y int, 
+  color uint32, alpha uint8) {
+  rmask, gmask, bmask, amask := s.ColorMasks()  
+  ptr    := s.pixelptr16(x, y)
+  old    := uint32(*ptr)
+  newcol := helpBlend(old, color, rmask,
+            gmask, bmask, amask, uint32(alpha))
+  *ptr    = uint16(newcol)
+}
+
+
+// Blends a pixel with the one already there to a surface with BPP 32
+// taking into account the value of alpha
+func (s * Surface) RawBlendPixel32(x, y int, 
+  color uint32, alpha uint8) {
+  rmask, gmask, bmask, amask := s.ColorMasks()  
+  ptr    := s.pixelptr32(x, y)
+  old    := *ptr
+  newcol := helpBlend(old, color, rmask,
+            gmask, bmask, amask, uint32(alpha))  
+  *ptr    = newcol
+}
+
+// Puts a pixel depending on the BytesPerPixel of the target surface
+// format. Still doesn't check the x and y coordinates for validity. 
+func (s * Surface) RawBlendPixelBBP(x, y int, color uint32, 
+    alpha uint8) {
+    switch s.surface.format.BytesPerPixel {
+    case 1:
+      s.RawBlendPixel8(x, y, color, alpha)
+    case 2:
+      s.RawBlendPixel16(x, y, color, alpha)
+    case 3:
+      s.RawBlendPixel24(x, y, color, alpha)
+    case 4:  
+      s.RawBlendPixel32(x, y, color, alpha)
+    default: 
+      // Do nothing.
   }
 }
-*/
 
- 
 
+// PutPixel for surfaces with 8 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InPutPixel8(x, y int, color uint32) {
+  if s.PixelOutside(x, y) { return }
+  s.RawPutPixel8(x, y, color)
+} 
+
+// PutPixel for surfaces with 16 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InPutPixel16(x, y int, color uint32) {
+  if s.PixelOutside(x, y) { return }
+  s.RawPutPixel16(x, y, color)
+} 
+
+// PutPixel for surfaces with 24 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InPutPixel24(x, y int, color uint32) {
+  if s.PixelOutside(x, y) { return }
+  s.RawPutPixel24(x, y, color)
+} 
+
+// PutPixel for surfaces with 32 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InPutPixel32(x, y int, color uint32) {
+  if s.PixelOutside(x, y) { return }
+  s.RawPutPixel32(x, y, color)
+} 
+
+// PutPixel for surfaces of all depth
+// It protects against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InPutPixelBBP(x, y int, color uint32) {
+  if s.PixelOutside(x, y) { return }
+  s.RawPutPixelBBP(x, y, color)
+}  
+
+// GetPixel for surfaces with 8 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.
+// Returns 0 if x and y are out of bounds  
+func (s * Surface) InGetPixel8(x, y int) (color uint32) {
+  if s.PixelOutside(x, y) { return 0 }
+  return s.RawGetPixel8(x, y)
+} 
+
+// GetPixel for surfaces with 16 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.
+// Returns 0 if x and y are out of bounds  
+func (s * Surface) InGetPixel16(x, y int) (color uint32) {
+  if s.PixelOutside(x, y) { return 0 }
+  return s.RawGetPixel16(x, y)
+} 
+
+// GetPixel for surfaces with 24 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.
+// Returns 0 if x and y are out of bounds  
+func (s * Surface) InGetPixel24(x, y int) (color uint32) {
+  if s.PixelOutside(x, y) { return 0 }
+  return s.RawGetPixel24(x, y)
+} 
+
+// GetPixel for surfaces with 32 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.
+// Returns 0 if x and y are out of bounds  
+func (s * Surface) InGetPixel32(x, y int) (color uint32) {
+  if s.PixelOutside(x, y) { return 0 }
+  return s.RawGetPixel32(x, y)
+} 
+
+// PutPixel for surfaces of all depth
+// It protects against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.
+// Returns 0 if x and y are out of bounds  
+func (s * Surface) InGetPixelBBP(x, y int) (color uint32) {
+  if s.PixelOutside(x, y) { return 0 }
+  return s.RawGetPixelBBP(x, y)
+}  
+
+
+// BlendPixel for surfaces with 8 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InBlendPixel8(x, y int, color uint32, alpha uint8) {
+  if s.PixelOutside(x, y) { return }
+  s.RawBlendPixel8(x, y, color, alpha)
+} 
+
+// BlendPixel for surfaces with 16 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InBlendPixel16(x, y int, color uint32, alpha uint8) {
+  if s.PixelOutside(x, y) { return }
+  s.RawBlendPixel16(x, y, color, alpha)
+} 
+
+// BlendPixel for surfaces with 24 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InBlendPixel24(x, y int, color uint32, alpha uint8) {
+  if s.PixelOutside(x, y) { return }
+  s.RawBlendPixel24(x, y, color, alpha)
+} 
+
+// BlendPixel for surfaces with 32 Bytes per pixel.
+// Unsafe on the wrong BBP.
+// It does protect against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InBlendPixel32(x, y int, color uint32, alpha uint8) {
+  if s.PixelOutside(x, y) { return }
+  s.RawBlendPixel32(x, y, color, alpha)
+} 
+
+// PutPixel for surfaces of all depth
+// It protects against out of bounds x and y values, 
+// hence the name starts with "In". 
+// However, it does not take clipping into consideration.  
+func (s * Surface) InBlendPixelBBP(x, y int, color uint32, 
+  alpha uint8) {
+  if s.PixelOutside(x, y) { return }
+  s.RawBlendPixelBBP(x, y, color, alpha)
+}  
+
+
+// Puts a pixel with the given color at the given coordinates
+// Takes the clipping rectangle and surface bounds into consideration
+// Locks and unlocks the surface if that is needed for drawing
+func (s * Surface) PutPixel(x, y int, color uint32) {
+  if s.PixelClip(x, y) { return }
+  s.Lock()
+  s.InPutPixelBBP(x, y, color)
+  s.Unlock() 
+}
+
+// Gets the color of a pixel from this surface 
+// Returns 0 if the pixel is outside of the clipping rectangle,
+// or outside of the bounds of the surface
+// Locks and unlocks the surface if that is needed
+func (s * Surface) GetPixel(x, y int) (color uint32) {
+  if s.PixelClip(x, y) { return 0 }
+  s.Lock()
+  res := s.InGetPixelBBP(x, y)
+  s.Unlock()
+  return res 
+}
+
+// Blends the color of a pixel from this surface, 
+// taking alpha into consideration. 
+// Returns 0 if the pixel is outside of the clipping rectangle,
+// or outside of the bounds of the surface.
+// Locks and unlocks the surface if that is needed for drawing
+func (s * Surface) BlendPixel(x, y int, color uint32, alpha uint8) {
+  if s.PixelClip(x, y) { return }
+  s.Lock()
+  s.InBlendPixelBBP(x, y, color, alpha)
+  s.Unlock() 
+}
 

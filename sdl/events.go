@@ -11,11 +11,11 @@ const (
 )
 
 // Event enumerations 
-type SDL_Events uint32
+type SDL_Events uint8
 
 const (
   // Unused (do not remove)
-  NOEVENT		= SDL_Events(iota)
+  NOEVENT		= iota
   // Application loses/gains visibility 
   ACTIVEEVENT   	
   // Keys pressed 
