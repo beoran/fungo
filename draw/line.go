@@ -5,6 +5,7 @@
 package draw
 
 import "fungo/sdl"
+import "math"
 
 type Surface sdl.Surface
 
@@ -34,6 +35,25 @@ func (s * Surface) BlendPixel(x1, y1 int, color uint32, alpha uint8) {
   s.toSDL().BlendPixel(x1, y1, color, alpha)
 }
 
+// Draws a horizontal line
+func (s * Surface) HLine(x1, y1, w int, color uint32) {
+  s.toSDL().FillRectCoord(x1, y1, w, 1, color);
+} 
+
+// Draws a vertical line
+func (s * Surface) VLine(x1, y1, h int, color uint32) {
+  s.toSDL().FillRectCoord(x1, y1, 1, h, color);
+} 
+
+// Draws a box (open rectangle) 
+func (s * Surface) Box(x1, y1, w, h int, color uint32) {
+  s.HLine(x1	, y1    , w, color)
+  s.HLine(x1	, y1 + h, w, color)
+  s.VLine(x1	, y1    , h, color)
+  s.VLine(x1 + w, y1    , w, color)
+}
+
+// Draws a line
 func (s * Surface) Line(x1, y1, x2, y2 int, color uint32) {
   // callback is a closure, saves us from having to pass 
   // explicitly the surface, color, etc
@@ -58,7 +78,15 @@ func (s * Surface) Circle(x1, y1, r int, color uint32) {
   BresenhamCircle(x1, y1, r, cb)
 }
 
-// Drawss an ellipse with the two give radii
+// Draws an acr between the two angles, expressed in radians
+func (s * Surface) Arc(x1, y1, r int, ang1, ang2 float64, color uint32) {
+  cb := func(x, y int) {
+    s.PutPixel(x, y, color)
+  }
+  BresenhamArc(x1, y1, r, ang1, ang2, cb)
+}
+
+// Draws an ellipse with the two give radii
 func (s * Surface) Ellipse(x1, y1, rx, ry int, color uint32) {
   // callback is a closure, saves us from having to pass 
   // explicitly the surface, color, etc
@@ -81,13 +109,21 @@ func abs(v int) int {
   return -v
 }
 
-// Ternary operator
+// Ternary operator for ints
 func tern(cond bool, trueval int, falseval int) int {
   if cond { return trueval } 
   return falseval
 }
 
-// All the BresenHam* are based on algorithms from SGE 
+// Ternary operator for float64
+func ftern(cond bool, trueval float64, falseval float64) float64 {
+  if cond { return trueval } 
+  return falseval
+}
+
+// All the BresenHam* are based on algorithms from SGE, but I noted that
+// they actually come originally from Allegro, so it' the Allegro license
+// which applies. 
 // Calls the callback for every point on the line (x1 y1) -> (x2 y2)
 func BresenhamLine(x1, y1, x2, y2 int, callback DrawCallback) { 
   dx := x2 - x1
@@ -242,7 +278,235 @@ func BresenhamEllipse(x, y, rx, ry int, callback DrawCallback) {
       } 
   } 
 }
+
+// Gets a point on the arc with radius r and angle a (expressed in radiants) 
+func GetPointOnArc(r int,  a float64) (x int, y int) {
+   var s, c float64;   
+   s ,c  = math.Sincos(a)
+   sl 	:= -s * float64(r);
+   cl   := c  * float64(r);
+   x     = (int)(ftern(c < 0, cl - 0.5, cl + 0.5))
+   y     = (int)(ftern(s < 0, sl - 0.5, sl + 0.5))
+   return x, y
+}
+
+
+
+// BresenhamArc
+//  Helper function for the arc function. Calculates the points in an arc
+//  of radius r around point x, y, going anticlockwise from fixed point
+//  binary angle ang1 to ang2, and calls the specified routine for each one. 
+//  The output proc will be passed first a copy of the bmp parameter, then 
+//  the x, y point, then a copy of the d parameter (so putpixel() can be 
+//  used as the callback).
+//
+func BresenhamArc(x1, y1, r int, ang1, ang2 float64, callback DrawCallback) {
+  // A full circle can be drawn in a discrete number of steps, 
+  // depending only on the radius.
+  // I'm taking (r + 1) * 8 steps for a full circle, which is a safe 
+  // if slower overestimation.
+  csteps := (r + 1) * 8
+  dang	 := ang2 - ang1
+  steps  := (float64(csteps) * dang / (2 * math.Pi))
+  isteps := int(steps) 
+  angstep:= dang / steps 
+  oldx   := x1
+  oldy   := y1
+  ang    := ang1
+  for i := 0; i < isteps ; i++ {
+    cx, cy := GetPointOnArc(r, ang);
+    x , y  := cx + x1 , cy + y1    
+    ang += angstep
+    // Don't draw if not advanced enough
+    if oldx == x && oldy == y { continue; }
+    callback(x, y)  
+    oldx, oldy = x, y    
+  }  
+}
+
 /*
+void do_arc(BITMAP *bmp, int x, int y, fixed ang1, fixed ang2, int r, int d, void (*proc)(BITMAP *, int, int, int))
+{
+   // start position 
+   int sx, sy;
+   // current position 
+   int px, py;
+   // end position 
+   int ex, ey;
+   // square of radius of circle 
+   long rr;
+   // difference between main radius squared and radius squared of three
+      potential next points 
+   long rr1, rr2, rr3;
+   // square of x and of y 
+   unsigned long xx, yy, xx_new, yy_new;
+   // start quadrant, current quadrant and end quadrant 
+   int sq, q, qe;
+   // direction of movement 
+   int dx, dy;
+   // temporary variable for determining if we have reached end point 
+   int det;
+
+   // Calculate the start point and the end point. 
+   // We have to flip y because bitmaps count y coordinates downwards. 
+   get_point_on_arc(r, ang1, &sx, &sy);
+   px = sx;
+   py = sy;
+   get_point_on_arc(r, ang2, &ex, &ey);
+
+   rr = r*r;
+   xx = px*px;
+   yy = py*py - rr;
+
+   // Find start quadrant. 
+   if (px >= 0) {
+      if (py <= 0)
+	 q = 0;                           // quadrant 0 
+      else
+	 q = 3;                           // quadrant 3 
+   }
+   else {
+      if (py < 0)
+	 q = 1;                           // quadrant 1 
+      else
+	 q = 2;                           // quadrant 2 
+   }
+   sq = q;
+
+   // Find end quadrant. 
+   if (ex >= 0) {
+      if (ey <= 0)
+	 qe = 0;                          // quadrant 0 
+      else
+	 qe = 3;                          // quadrant 3 
+   }
+   else {
+      if (ey < 0)
+	 qe = 1;                          // quadrant 1 
+      else
+	 qe = 2;                          // quadrant 2 
+   }
+
+   if (q > qe) {
+      // qe must come after q. 
+      qe += 4;
+   }
+   else if (q == qe) {
+      // If q==qe but the beginning comes after the end, make qe be
+       * strictly after q.
+       
+      if (((ang2&0xffffff) < (ang1&0xffffff)) ||
+	  (((ang1&0xffffff) < 0x400000) && ((ang2&0xffffff) >= 0xc00000)))
+         qe += 4;
+   }
+
+   // initial direction of movement 
+   if (((q+1)&2) == 0)
+      dy = -1;
+   else
+      dy = 1;
+   if ((q&2) == 0)
+      dx = -1;
+   else
+      dx = 1;
+
+   while (TRUE) {
+      // Change quadrant when needed.
+       * dx and dy determine the possible directions to go in this
+       * quadrant, so they must be updated when we change quadrant.
+       
+      if ((q&1) == 0) {
+         if (px == 0) {
+            if (qe == q)
+	       break;
+	    q++;
+	    dy = -dy;
+	 }
+      }
+      else {
+         if (py == 0) {
+	    if (qe == q)
+	       break;
+	    q++;
+	    dx = -dx;
+	 }
+      }
+
+      // Are we in the final quadrant? 
+      if (qe == q) {
+	 // Have we reached (or passed) the end point both in x and y? 
+	 det = 0;
+
+	 if (dy > 0) {
+	    if (py >= ey)
+	       det++;
+	 }
+	 else {
+	    if (py <= ey)
+	       det++;
+	 }
+	 if (dx > 0) {
+	    if (px >= ex)
+	       det++;
+	 }
+	 else {
+	    if (px <= ex)
+	       det++;
+	 }
+	 
+	 if (det == 2)
+	    break;
+      }
+
+      proc(bmp, x+px, y+py, d);
+
+      // From here, we have only 3 possible directions of movement, eg.
+       * for the first quadrant:
+       *
+       *    .........
+       *    .........
+       *    ......21.
+       *    ......3*.
+       *
+       * These are reached by adding dx to px and/or adding dy to py.
+       * We need to find which of these points gives the best
+       * approximation of the (square of the) radius.
+       
+
+      xx_new = (px+dx) * (px+dx);
+      yy_new = (py+dy) * (py+dy) - rr;
+      rr1 = xx_new + yy;
+      rr2 = xx_new + yy_new;
+      rr3 = xx     + yy_new;
+
+      // Set rr1, rr2, rr3 to be the difference from the main radius of the
+       * three points.
+       
+      if (rr1 < 0)
+	 rr1 = -rr1;
+      if (rr2 < 0)
+	 rr2 = -rr2;
+      if (rr3 < 0)
+	 rr3 = -rr3;
+
+      if (rr3 >= MIN(rr1, rr2)) {
+         px += dx;
+	 xx = xx_new;
+      }
+      if (rr1 > MIN(rr2, rr3)) {
+         py += dy;
+	 yy = yy_new;
+      }
+   }
+   // Only draw last point if it doesn't overlap with first one. 
+   if ((px != sx) || (py != sy) || (sq == qe))
+      proc(bmp, x+px, y+py, d);
+}
+
+
+
+
+//
 #define DO_BEZIER(function)\
   
   *  Note: I don't think there is any great performance win in translating this to fixed-point integer math,
@@ -314,4 +578,6 @@ func BresenhamEllipse(x, y, rx, ry int, callback DrawCallback) {
   \
   // Update the area \
   sge_UpdateRect(surface, xmin, ymin, xmax-xmin+1, ymax-ymin+1);
-*/  
+  
+*/
+

@@ -459,6 +459,18 @@ func (dst * Surface) FillRect(dstrect * Rect, color uint32) (int) {
   return fillRect(dst.surface, sdldstrect, color)
 }
 
+// This function performs a fast fill of the given rectangle
+// with the given coordinates and width and height with 'color'
+func (dst * Surface) FillRectCoord(x, y, w, h int, color uint32) (int) {
+  sdlrect := C.SDL_Rect{C.Sint16(x), C.Sint16(y), C.Uint16(w), C.Uint16(h)}
+  return fillRect(dst.surface, &sdlrect, color)
+}
+
+// Fills the whole surface with the color 
+func (dst * Surface) FillAll(color uint32) (int) {
+  return fillRect(dst.surface, nil, color)
+}
+
 // This function takes a surface and copies it to a new surface of the
 // pixel format and colors of the video framebuffer, suitable for fast
 // blitting onto the display surface.

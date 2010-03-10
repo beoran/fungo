@@ -160,7 +160,7 @@ func TestSurface() {
   
   font := sdl.LoadTTFont("data/sazanami-gothic.ttf", 24)
   defer font.Free()
-  img := font.RenderSolid("Hello 世界!", white)
+  img := font.RenderBlended("Hello 世界!", white)
   defer img.Free()
   
   img.BlitTo(screen, 20, 20)
@@ -178,6 +178,7 @@ func TestSurface() {
   draw.Line(400, 400, 410, 450, rand.Uint32())
   draw.Circle(400, 400, 50, rand.Uint32())
   draw.Ellipse(300, 300, 50, 100, rand.Uint32())
+  draw.Arc(200, 200, 50, 0.0, 2.0, rand.Uint32())
   screen.Flip()
   
   for {
