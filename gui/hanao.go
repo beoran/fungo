@@ -32,21 +32,25 @@ var IMAGE_DIR = "data"
 // Messages that can be sent to objects 
 type Message int
 
+// Any interface 
+type Any interface {}
+
 // The object interface
 type Object interface {
-  Send(m Message, args... Object) (Object)
+  Any
+  Send(m Message, args... Any) (Any)
   DefineMethod(messsage Message, method Method)
   GetMethod(mes Message) (Method)
 } 
 
 // Methods 
-type Method func(o Object, args ...Object) (Object)
+type Method func(o Object, args ...Any) (Any)
 
 // Mapping from messages to methdos
 type MessageMap map[Message] Method
 
 // Sends a message to an Object
-func Send(o Object, m Message, args ...Object) (Object) {
+func Send(o Object, m Message, args ...Any) (Any) {
   action := o.GetMethod(m)
   if action == nil { return nil }
   return (action)(o, args)
@@ -65,7 +69,7 @@ func NewObject() (Object) {
 }
 
 // Sends a message to a basic object
-func (o * BasicObject) Send(m Message, args ...Object) (Object) {
+func (o * BasicObject) Send(m Message, args ...Any) (Any) {
   action := o.GetMethod(m)
   if action == nil { return nil }
   return (action)(o, args)
@@ -208,14 +212,14 @@ func OnActive(h * Hanao, event * sdl.Event) {
 }
 
 // To unwrap the arguments.
-func unwrapArgs(o Object, args ...Object) (*Hanao, *sdl.Event) {
+func unwrapArgs(o Object, args ...Any) (*Hanao, *sdl.Event) {
       hanao   := o.(*Hanao)
       event   := args[0].(Event).Event
       return hanao, event
 }
 
 // Called when the system wants to shutdown
-func  OnQuit(o Object, args ...Object) (Object) {
+func  OnQuit(o Object, args ...Any) (Any) {
       h, event:= unwrapArgs(o, args) 
       println(event.Type)
       h.done   = true
