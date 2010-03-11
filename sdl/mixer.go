@@ -526,6 +526,7 @@ func (music * Music) Rewind() {
 
 
 // loads a wave file from a .wav or .ogg file 
+// It must be stereo if you opened with OpenMixerDefault
 func LoadSound(filename string) (* Sound) {
   result          := new(Sound)
   result.chunk     = LoadWAV(filename)
