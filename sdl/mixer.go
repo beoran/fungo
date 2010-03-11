@@ -25,8 +25,10 @@ const DEFAULT_FREQUENCY = 22050
 const MIX_DEFAULT_CHANNELS = 2
 const MIX_MAX_VOLUME       = 128 // Volume of a chunk 
 
+
 // The different fading types supported 
 type Mix_Fading int 
+
 
 const (
   NO_FADING  = Mix_Fading(iota) 
@@ -45,6 +47,13 @@ const (
   MUS_OGG
   MUS_MP3
 )
+
+func OpenMixerDefault() (bool) {
+  format 	:= uint16(FAUDIO_U16LSB)
+  chunksize 	:= 1024*8
+  if BYTEORDER == BIG_ENDIAN { format = FAUDIO_U16MSB }   
+  return i2b(OpenMixer(DEFAULT_FREQUENCY, format, MIX_DEFAULT_CHANNELS, chunksize))
+}
 
 // Open the mixer with a certain audio format 
 func OpenMixer(frequency int, format uint16, channels int, chunksize int) (int) { 
@@ -77,9 +86,17 @@ func LoadWAV_RW(src * C.SDL_RWops, freesrc int) (* C.Mix_Chunk) {
   return C.Mix_LoadWAV_RW(src, C.int(freesrc))
 }
  
-func LoadWAV(filename string)  (* C.Mix_Chunk) {
-  rwops   := RWFromFile(filename, "rb")
-  return LoadWAV_RW(rwops, 1)
+func LoadWAV(filename string)  (* C.Mix_Chunk) {  
+  rwops   := RWFromFile(filename, "r")
+  
+  
+  if rwops == nil { return nil }
+  wav := C.Mix_LoadWAV_RW(rwops, C.int(1))
+  // wav := LoadWAV_RW(rwops, 1)
+   
+  println(filename, rwops, wav, GetError())
+  
+  return wav
 }
 
 func LoadMUS(res string) (* C.Mix_Music) {
@@ -373,7 +390,7 @@ func PausedChannel(channel int) (int) {
   return int(C.Mix_Paused(C.int(channel)))
 }
 
-// Resume the music stream
+// Pause the music stream
 func PauseMusic() { 
   C.Mix_PauseMusic()
 }
@@ -386,6 +403,11 @@ func ResumeMusic() {
 // Rewinds the music stream  
 func RewindMusic() { 
   C.Mix_RewindMusic()
+}
+
+// Stops the music stream  
+func StopMusic() { 
+  HaltMusic()
 }
 
 // Returns nonzero if the music is paused
@@ -482,6 +504,27 @@ func (music * Music) Play() {
   PlayMusic(music.music, -1)
 }
 
+// Pauses the music
+func (music * Music) Pause() {
+  PauseMusic()
+}
+
+// Stops the music
+func (music * Music) Stop() {
+  StopMusic()
+}
+
+// Resumes the music
+func (music * Music) Resume() {
+ ResumeMusic()
+}
+
+// Rewinds the music
+func (music * Music) Rewind() {
+  RewindMusic()
+}
+
+
 // loads a wave file from a .wav or .ogg file 
 func LoadSound(filename string) (* Sound) {
   result          := new(Sound)
@@ -519,7 +562,7 @@ func (wave * Sound) SetChannel(channel Channel) (Channel) {
 // Plays the wave one time on it's channel 
 func (wave * Sound) Play() {
   if wave.chunk == nil { return }
-  PlayChannel(int(wave.channel), wave.chunk, 1)   
+  PlayChannel(int(wave.channel), wave.chunk, 0)   
 }
 
 

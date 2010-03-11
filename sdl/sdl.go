@@ -300,9 +300,10 @@ func imgLoad(filename string) (* C.SDL_Surface) {
 // Functions to create SDL_RWops structures from various data sources
 // Creates an RWOPS from a file
 func RWFromFile(file, mode string)  (* C.SDL_RWops) {
-  cfile := cstr(file) ; cfile.free()
-  cmode := cstr(mode) ; cmode.free()  
-  return C.SDL_RWFromFile(cfile, cmode);  
+  cfile := cstr(file) ; defer cfile.free()
+  cmode := cstr(mode) ; defer cmode.free()  
+  rw    := C.SDL_RWFromFile(cfile, cmode)
+  return rw 
 }
 
 //Not supported

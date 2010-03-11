@@ -212,8 +212,25 @@ func TestQuit() {
   sdl.Quit()    
 } 
 
+func TestSound() {
+  sdl.OpenMixerDefault()
+  mus := sdl.LoadMusic("data/ufsjin.mid")
+  snd := sdl.LoadSound("data/pugs.wav") 
+  defer snd.Free() 
+  defer mus.Free() 
+  fmt.Println(mus, snd)
+  mus.Play()   
+  snd.Play()
+  sdl.Delay(500)
+  snd.Play()
+  sdl.Delay(2000)
+  mus.Pause()
+  sdl.CloseMixer()
+}
+
 func main()	{
   TestSetup()
+  TestSound()
   TestJoystick()
   TestSurface()
   TestCpuinfo()
