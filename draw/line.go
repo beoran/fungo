@@ -7,7 +7,9 @@ package draw
 import "fungo/sdl"
 import "math"
 
-type Surface sdl.Surface
+type Surface struct { 
+  * sdl.Surface
+}
 
 type Drawable interface {
   PutPixel(x, y int, color uint32)
@@ -16,11 +18,11 @@ type Drawable interface {
 }
 
 func FromSDL(s * sdl.Surface) (*Surface) {
-  return (*Surface)(s)
+  return &Surface{s}
 }
 
 func (s *Surface) toSDL() (*sdl.Surface) {
-  return (*sdl.Surface)(s)
+  return s.Surface
 }
 
 func (s * Surface) PutPixel(x1, y1 int, color uint32) {
@@ -47,13 +49,13 @@ func (s * Surface) VLine(x1, y1, h int, color uint32) {
 
 // Draws a box (open rectangle) 
 func (s * Surface) Box(x1, y1, w, h int, color uint32) {
-  s.HLine(x1	, y1    , w, color)
-  s.HLine(x1	, y1 + h, w, color)
-  s.VLine(x1	, y1    , h, color)
-  s.VLine(x1 + w, y1    , w, color)
+  s.HLine(x1	   , y1    , w, color)
+  s.HLine(x1	   , y1 + h, w, color)
+  s.VLine(x1	   , y1    , h, color)
+  s.VLine(x1 + w , y1    , h, color)
 }
 
-// Draws a line
+// Draws a line from point x1 y1 to x2 y2
 func (s * Surface) Line(x1, y1, x2, y2 int, color uint32) {
   // callback is a closure, saves us from having to pass 
   // explicitly the surface, color, etc
@@ -62,7 +64,14 @@ func (s * Surface) Line(x1, y1, x2, y2 int, color uint32) {
   cb := func(x, y int) {
     s.PutPixel(x, y, color)
   }
-  BresenhamLine(x1, y1, x2, y2, cb)
+  DoLine(x1, y1, x2, y2, cb)
+}
+
+// Draws a line that starts at x1 and y1, and which 
+// ends at x1 + w and y1 +h. Like the name suggests, 
+// it could be the diagnoal of a rectangle.   
+func (s * Surface) Diagonal(x1, y1, w, h int, color uint32) {
+  s.Line(x1, y1, x1 + w, y1 + h, color)
 }
 
 // Draws a circle around the midpoint (x1, y1) with radius r
@@ -75,15 +84,15 @@ func (s * Surface) Circle(x1, y1, r int, color uint32) {
   cb := func(x, y int) {
     s.PutPixel(x, y, color)
   }
-  BresenhamCircle(x1, y1, r, cb)
+  DoCircle(x1, y1, r, cb)
 }
 
-// Draws an acr between the two angles, expressed in radians
+// Draws an arc between the two angles, expressed in radians
 func (s * Surface) Arc(x1, y1, r int, ang1, ang2 float64, color uint32) {
   cb := func(x, y int) {
     s.PutPixel(x, y, color)
   }
-  BresenhamArc(x1, y1, r, ang1, ang2, cb)
+  DoArc(x1, y1, r, ang1, ang2, cb)
 }
 
 // Draws an ellipse with the two give radii
@@ -95,13 +104,206 @@ func (s * Surface) Ellipse(x1, y1, rx, ry int, color uint32) {
   cb := func(x, y int) {
     s.PutPixel(x, y, color)
   }
-  BresenhamEllipse(x1, y1, rx, ry, cb)
+  DoEllipse(x1, y1, rx, ry, cb)
+}
+
+// Callback for plotting a single value function
+type PlotFunction func(x float64) (float64)
+
+// Callback for plotting a multi-value relation
+type MultiPlotFunction func(x float64) ([]float64)
+  
+// Callback for algorithmical drawing functions.
+// Use a closure of this type to be able to draw to the drawable. 
+type DrawCallback func(x, y int);
+
+// Same, but can draw multiple Y values for one X point
+type MultiDrawCallback func(x int, y []int);
+
+
+
+// Plots the PlotFunction in the interval between and including 
+// x1 and x2 using points
+func (s * Surface) Plot(x1, x2 int, step float64,
+  color uint32, calc PlotFunction) {
+  // callback is a closure, saves us from having to pass 
+  // explicitly the surface, color, etc
+  // We don't use channels and goroutines since SDL 
+  // may not support it during locking it's surfaces.
+  cb := func(x, y int) {
+    s.PutPixel(x, y, color)
+  }
+  DoPlot(x1, x2, step, calc, cb)
+}
+
+// Plots the PlotFunction in the interval between and including 
+// x1 and x2 using lines
+func (s * Surface) LinePlot(x1, x2 int, step float64,
+  color uint32, calc PlotFunction) {
+  // callback is a closure, saves us from having to pass 
+  // explicitly the surface, color, etc
+  // We don't use channels and goroutines since SDL 
+  // may not support it during locking it's surfaces.
+  oldx:= -1
+  oldy:= -1
+  fst := true   
+  cb := func(x, y int) {
+    if fst { 
+      s.PutPixel(x, y, color)
+      fst = false
+      
+    } else {
+      s.Line(oldx, oldy, x, y, color)
+    }
+    oldx = x
+    oldy = y
+  }
+  DoPlot(x1, x2, step, calc, cb)
 }
 
 
-// Callback for algorythmicall drawing functions.
-// Use a closure to be able to draw to the drawable. 
-type DrawCallback func(x, y int);
+// Plots the MultiPlotFunction in the interval between and including 
+// x1 and x2. step determines the precision
+func (s * Surface) MultiPlot(x1, x2 int, step float64, 
+      color uint32, calc MultiPlotFunction) {
+  // callback is a closure, saves us from having to pass 
+  // explicitly the surface, color, etc
+  // We don't use channels and goroutines since SDL 
+  // may not support it during locking it's surfaces.
+  cb := func(x int, ylist []int) {
+    for _ , y := range ylist {
+      s.PutPixel(x, y, color)
+    }
+  }
+  DoMultiPlot(x1, x2, step, calc, cb)
+}
+
+// Plots the MultiPlotFunction in the interval between and including 
+// x1 and x2. step determines the precision, using lines
+// calc *must* alway return the same amount of pints, otherwise it 
+// will crash this function
+func (s * Surface) MultiLinePlot(x1, x2 int, step float64, 
+      color uint32, calc MultiPlotFunction) {
+  // callback is a closure 
+  oldx:= -1
+  oldylist:= make([]int, 0)
+  fst := true   
+  cb := func(x int,  ylist []int) {
+    if fst {
+      for _ , y := range ylist {    
+        s.PutPixel(x, y, color)
+      }
+      fst = false      
+    } else {
+      for i , y := range ylist {
+        oldy := oldylist[i]
+        s.Line(oldx, oldy, x, y, color)
+      }
+    }
+    oldx = x
+    oldylist = ylist
+  }
+  DoMultiPlot(x1, x2, step, calc, cb)
+}
+
+
+// Example for use of Plot
+func (s * Surface) PlotSin(x1, x2, cy int, color uint32) {
+  calc := func(x float64) (float64) {
+    x   = x / 100
+    return (math.Sin(x) * 100) + float64(cy)
+  }
+  s.Plot(x1, x2, 1.0, color, calc)
+}
+
+// Example for use of MultiPlot. This is a slow way to plot draw 
+// circles, so  better use Circle
+func (s * Surface) PlotCircle(cx, cy, r int, color uint32) {
+  rr   := float64(r) * float64(r)
+  fcy  := float64(cy)
+  fcx  := float64(cx)
+  x1   := cx - r
+  x2   := cx + r
+  // This calculation function is a closure.
+  // Ah, closures, how did I ever program without them? :)
+  calc := func(x float64) ([]float64) {
+    results := make([]float64, 2)
+    mx      := x - fcx // Virtually center circle around 0,0
+    y       := math.Sqrt(rr - mx*mx)
+    results[0] =  fcy + y
+    results[1] =  fcy - y
+    return results
+  }
+  s.MultiLinePlot(x1, x2, 1, color, calc)
+}
+
+
+// Calls PlotFunction for all values between and including x1 and x2
+// and plots the obtained values, rounded values with drawcallback
+// Protected against NaN and Inf, so PlotFunction may return these 
+// as well 
+func DoPlot(x1, x2 int, step float64, 
+           calc PlotFunction, draw DrawCallback){
+  if (step <= 0.0) { step = 1.0 }           
+  stop  := float64(x2) 
+  for xf := float64(x1) ; xf <= stop ; xf += step {
+    yf  := calc(xf) 
+    if math.IsNaN(yf)    { continue } // skip NaN
+    if math.IsInf(yf, 0) { continue } // skip Inf
+    y   := round(yf)
+    x   := round(xf)
+    draw(x, y)
+  }
+}
+
+// Calls MultiPlotFunction for all values between and including x1 and x2
+// and plots the obtained values, rounded values with drawcallback
+// Protected against NaN and Inf, so PlotFunction may return these 
+// as well 
+func DoMultiPlot(x1, x2 int, step float64, 
+  calc MultiPlotFunction, draw MultiDrawCallback) {
+  if (step <= 0.0) { step = 1.0 }
+  stop  := float64(x2)
+  for xf := float64(x1) ; xf <= stop ; xf += step {
+    ylist  := calc(xf)
+    ylen   := len(ylist)
+    aid    := make([]int, ylen)
+    j      := 0
+    for i:=0 ; i < ylen ; i++ {
+      yf := ylist[i]  
+      if math.IsNaN(yf)    { continue } // skip NaN
+      if math.IsInf(yf, 0) { continue } // skip Inf
+      aid[j] = round(yf) 
+      j++
+    }
+    cleanlist := make([]int, j)
+    copy(cleanlist, aid) 
+    draw(int(xf), cleanlist)
+  }
+}
+
+// Calculates a Quadratic bezier
+func QuadraticBezier(t, p0, p1, p2 float64) (float64) {
+  return square(1 - t) * p0 + 2*(1-t)*t*p1 + square(t)*p2 
+} 
+
+
+func (s * Surface) PlotBezier(x1, y1, w, p0, p1, p2 int, color uint32) { 
+  fx1 := float64(x1)
+  fx2 := fx1 + float64(w)
+  fy1 := float64(y1)
+  fp0 := float64(p0)
+  fp1 := float64(p1)
+  fp2 := float64(p2)
+  calc := func(x float64) (float64) {
+    x   = (x - fx1) / (fx2 - fx1)
+    y   := QuadraticBezier(x, fp0, fp1, fp2) 
+    return y + fy1
+  }
+  s.LinePlot(x1, x1 + w, 1.0, color, calc)
+}
+
+
 
 // Helper functions for integer math 
 func abs(v int) int { 
@@ -121,11 +323,21 @@ func ftern(cond bool, trueval float64, falseval float64) float64 {
   return falseval
 }
 
+// Rounds a float64 to the nearest integer
+func round(val float64) (int) {
+  return int(math.Floor(val + 0.5))
+} 
+
+// Returns the square of the value 
+func square(value float64) (float64) {
+  return value * value 
+}
+
 // All the BresenHam* are based on algorithms from SGE, but I noted that
 // they actually come originally from Allegro, so it' the Allegro license
 // which applies. 
 // Calls the callback for every point on the line (x1 y1) -> (x2 y2)
-func BresenhamLine(x1, y1, x2, y2 int, callback DrawCallback) { 
+func DoLine(x1, y1, x2, y2 int, callback DrawCallback) { 
   dx := x2 - x1
   dy := y2 - y1    
   sdx := tern(dx < 0, -1 , 1) 
@@ -161,7 +373,7 @@ func BresenhamLine(x1, y1, x2, y2 int, callback DrawCallback) {
 }  
   
 // Calls callback at each point of the circle 
-func BresenhamCircle(x, y, r int, callback DrawCallback) {
+func DoCircle(x, y, r int, callback DrawCallback) {
   cx    := 0;
   cy    := r;
   df    := 1 - r
@@ -192,7 +404,7 @@ func BresenhamCircle(x, y, r int, callback DrawCallback) {
 }
   
 // XXX: doesn't work for some reason. 
-func BresenhamEllipse(x, y, rx, ry int, callback DrawCallback) { 
+func DoEllipse(x, y, rx, ry int, callback DrawCallback) { 
   var ix, iy int;
   var h, i, j, k int;
   var oh, oi, oj, ok int;
@@ -219,7 +431,7 @@ func BresenhamEllipse(x, y, rx, ry int, callback DrawCallback) {
       k = (i * ry) / rx;
 
       if (((h != oh) || (k != ok)) && (h < oi)) {
-        callback( x+h, y+k)
+        callback(x+h, y+k)
           if (h != 0) { callback( x-h, y+k) }
           if (k != 0) {
             callback( x+h, y-k)
@@ -292,7 +504,7 @@ func GetPointOnArc(r int,  a float64) (x int, y int) {
 
 
 
-// BresenhamArc
+// DoArc
 //  Helper function for the arc function. Calculates the points in an arc
 //  of radius r around point x, y, going anticlockwise from fixed point
 //  binary angle ang1 to ang2, and calls the specified routine for each one. 
@@ -300,7 +512,7 @@ func GetPointOnArc(r int,  a float64) (x int, y int) {
 //  the x, y point, then a copy of the d parameter (so putpixel() can be 
 //  used as the callback).
 //
-func BresenhamArc(x1, y1, r int, ang1, ang2 float64, callback DrawCallback) {
+func DoArc(x1, y1, r int, ang1, ang2 float64, callback DrawCallback) {
   // A full circle can be drawn in a discrete number of steps, 
   // depending only on the radius.
   // I'm taking (r + 1) * 8 steps for a full circle, which is a safe 
@@ -319,265 +531,10 @@ func BresenhamArc(x1, y1, r int, ang1, ang2 float64, callback DrawCallback) {
     ang += angstep
     // Don't draw if not advanced enough
     if oldx == x && oldy == y { continue; }
-    callback(x, y)  
-    oldx, oldy = x, y    
+    callback(x, y)
+    oldx = x  
+    oldy = y    
   }  
 }
 
-/*
-void do_arc(BITMAP *bmp, int x, int y, fixed ang1, fixed ang2, int r, int d, void (*proc)(BITMAP *, int, int, int))
-{
-   // start position 
-   int sx, sy;
-   // current position 
-   int px, py;
-   // end position 
-   int ex, ey;
-   // square of radius of circle 
-   long rr;
-   // difference between main radius squared and radius squared of three
-      potential next points 
-   long rr1, rr2, rr3;
-   // square of x and of y 
-   unsigned long xx, yy, xx_new, yy_new;
-   // start quadrant, current quadrant and end quadrant 
-   int sq, q, qe;
-   // direction of movement 
-   int dx, dy;
-   // temporary variable for determining if we have reached end point 
-   int det;
-
-   // Calculate the start point and the end point. 
-   // We have to flip y because bitmaps count y coordinates downwards. 
-   get_point_on_arc(r, ang1, &sx, &sy);
-   px = sx;
-   py = sy;
-   get_point_on_arc(r, ang2, &ex, &ey);
-
-   rr = r*r;
-   xx = px*px;
-   yy = py*py - rr;
-
-   // Find start quadrant. 
-   if (px >= 0) {
-      if (py <= 0)
-	 q = 0;                           // quadrant 0 
-      else
-	 q = 3;                           // quadrant 3 
-   }
-   else {
-      if (py < 0)
-	 q = 1;                           // quadrant 1 
-      else
-	 q = 2;                           // quadrant 2 
-   }
-   sq = q;
-
-   // Find end quadrant. 
-   if (ex >= 0) {
-      if (ey <= 0)
-	 qe = 0;                          // quadrant 0 
-      else
-	 qe = 3;                          // quadrant 3 
-   }
-   else {
-      if (ey < 0)
-	 qe = 1;                          // quadrant 1 
-      else
-	 qe = 2;                          // quadrant 2 
-   }
-
-   if (q > qe) {
-      // qe must come after q. 
-      qe += 4;
-   }
-   else if (q == qe) {
-      // If q==qe but the beginning comes after the end, make qe be
-       * strictly after q.
-       
-      if (((ang2&0xffffff) < (ang1&0xffffff)) ||
-	  (((ang1&0xffffff) < 0x400000) && ((ang2&0xffffff) >= 0xc00000)))
-         qe += 4;
-   }
-
-   // initial direction of movement 
-   if (((q+1)&2) == 0)
-      dy = -1;
-   else
-      dy = 1;
-   if ((q&2) == 0)
-      dx = -1;
-   else
-      dx = 1;
-
-   while (TRUE) {
-      // Change quadrant when needed.
-       * dx and dy determine the possible directions to go in this
-       * quadrant, so they must be updated when we change quadrant.
-       
-      if ((q&1) == 0) {
-         if (px == 0) {
-            if (qe == q)
-	       break;
-	    q++;
-	    dy = -dy;
-	 }
-      }
-      else {
-         if (py == 0) {
-	    if (qe == q)
-	       break;
-	    q++;
-	    dx = -dx;
-	 }
-      }
-
-      // Are we in the final quadrant? 
-      if (qe == q) {
-	 // Have we reached (or passed) the end point both in x and y? 
-	 det = 0;
-
-	 if (dy > 0) {
-	    if (py >= ey)
-	       det++;
-	 }
-	 else {
-	    if (py <= ey)
-	       det++;
-	 }
-	 if (dx > 0) {
-	    if (px >= ex)
-	       det++;
-	 }
-	 else {
-	    if (px <= ex)
-	       det++;
-	 }
-	 
-	 if (det == 2)
-	    break;
-      }
-
-      proc(bmp, x+px, y+py, d);
-
-      // From here, we have only 3 possible directions of movement, eg.
-       * for the first quadrant:
-       *
-       *    .........
-       *    .........
-       *    ......21.
-       *    ......3*.
-       *
-       * These are reached by adding dx to px and/or adding dy to py.
-       * We need to find which of these points gives the best
-       * approximation of the (square of the) radius.
-       
-
-      xx_new = (px+dx) * (px+dx);
-      yy_new = (py+dy) * (py+dy) - rr;
-      rr1 = xx_new + yy;
-      rr2 = xx_new + yy_new;
-      rr3 = xx     + yy_new;
-
-      // Set rr1, rr2, rr3 to be the difference from the main radius of the
-       * three points.
-       
-      if (rr1 < 0)
-	 rr1 = -rr1;
-      if (rr2 < 0)
-	 rr2 = -rr2;
-      if (rr3 < 0)
-	 rr3 = -rr3;
-
-      if (rr3 >= MIN(rr1, rr2)) {
-         px += dx;
-	 xx = xx_new;
-      }
-      if (rr1 > MIN(rr2, rr3)) {
-         py += dy;
-	 yy = yy_new;
-      }
-   }
-   // Only draw last point if it doesn't overlap with first one. 
-   if ((px != sx) || (py != sy) || (sq == qe))
-      proc(bmp, x+px, y+py, d);
-}
-
-
-
-
-//
-#define DO_BEZIER(function)\
-  
-  *  Note: I don't think there is any great performance win in translating this to fixed-point integer math,
-  *  most of the time is spent in the line drawing routine.
-  \
-  float x = float(x1), y = float(y1);\
-  float xp = x, yp = y;\
-  float delta;\
-  float dx, d2x, d3x;\
-  float dy, d2y, d3y;\
-  float a, b, c;\
-  int i;\
-  int n = 1;\
-  Sint16 xmax=x1, ymax=y1, xmin=x1, ymin=y1;\
-  \
-  // compute number of iterations \
-  if(level < 1)\
-    level=1;\
-  if(level >= 15)\
-    level=15; \
-  while (level-- > 0)\
-    n*= 2;\
-  delta = float( 1.0 / float(n) );\
-  \
-  // compute finite differences \
-  // a, b, c are the coefficient of the polynom in t defining the parametric curve \
-  // The computation is done independently for x and y \
-  a = float(-x1 + 3*x2 - 3*x3 + x4);\
-  b = float(3*x1 - 6*x2 + 3*x3);\
-  c = float(-3*x1 + 3*x2);\
-  \
-  d3x = 6 * a * delta*delta*delta;\
-  d2x = d3x + 2 * b * delta*delta;\
-  dx = a * delta*delta*delta + b * delta*delta + c * delta;\
-  \
-  a = float(-y1 + 3*y2 - 3*y3 + y4);\
-  b = float(3*y1 - 6*y2 + 3*y3);\
-  c = float(-3*y1 + 3*y2);\
-  \
-  d3y = 6 * a * delta*delta*delta;\
-  d2y = d3y + 2 * b * delta*delta;\
-  dy = a * delta*delta*delta + b * delta*delta + c * delta;\
-  \
-  if (SDL_MUSTLOCK(surface) && _sge_lock) {\
-    if (SDL_LockSurface(surface) < 0)\
-      return;\
-  }\
-  \
-  // iterate \
-  for (i = 0; i < n; i++) {\
-    x += dx; dx += d2x; d2x += d3x;\
-    y += dy; dy += d2y; d2y += d3y;\
-    if(Sint16(xp) != Sint16(x) || Sint16(yp) != Sint16(y)){\
-      function;\
-      if(_sge_update==1){\
-        xmax= (xmax>Sint16(xp))? xmax : Sint16(xp);  ymax= (ymax>Sint16(yp))? ymax : Sint16(yp);\
-        xmin= (xmin<Sint16(xp))? xmin : Sint16(xp);  ymin= (ymin<Sint16(yp))? ymin : Sint16(yp);\
-        xmax= (xmax>Sint16(x))? xmax : Sint16(x);    ymax= (ymax>Sint16(y))? ymax : Sint16(y);\
-        xmin= (xmin<Sint16(x))? xmin : Sint16(x);    ymin= (ymin<Sint16(y))? ymin : Sint16(y);\
-      }\
-    }\
-    xp = x; yp = y;\
-  }\
-  \
-  // unlock the display \
-  if (SDL_MUSTLOCK(surface) && _sge_lock) {\
-    SDL_UnlockSurface(surface);\
-  }\
-  \
-  // Update the area \
-  sge_UpdateRect(surface, xmin, ymin, xmax-xmin+1, ymax-ymin+1);
-  
-*/
 

@@ -10,6 +10,7 @@ all: libs test-fungo
 libs:
 	make -C sdl install
 	make -C draw install
+	make -C gui install
 
 test-fungo: test-fungo.go libs
 	$(GC) test-fungo.go

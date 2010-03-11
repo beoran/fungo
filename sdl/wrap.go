@@ -187,8 +187,11 @@ type Surface struct {
 func wrapSurface(surface * C.SDL_Surface) (* Surface) {
   if surface == nil { return nil }  
   result := &Surface{surface}
-  clean  := func(surf * Surface) { surf.Free(); }
-  runtime.SetFinalizer(result, clean)
+  // Don't finalize the screen!
+  if surface != getVideoSurface() { 
+    clean  := func(surf * Surface) { surf.Free(); }
+    runtime.SetFinalizer(result, clean)
+  }
   return result
 }  
 
@@ -340,11 +343,22 @@ func (surface * Surface) H16() int16 {
 
 
 // Loads a surface from a .png, .jpg, .bmp or .xcf file. 
-// Remeber to call Display or DisplayAlpha on it to speed up 
+// Remember to call Acellerate or AccelerateAlpha on it to speed up 
 // it's blitting speed! 
 func LoadSurface(filename string) (*Surface) {
   img := imgLoad(filename)
   return wrapSurface(img)
+}
+
+// Loads the surface and accellerates it
+// Pass true for alpha if you want it to be transparent,
+// false if not
+func LoadFastSurface(filename string, alpha bool) {
+  s := LoadSurface(name)
+  if alpha {
+    return s.AccelerateAlpha
+  }
+  return s.Accellerate
 }
 
 // Makes sure that the given rectangle of the screen is updated

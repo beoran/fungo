@@ -179,6 +179,10 @@ func TestSurface() {
   draw.Circle(400, 400, 50, rand.Uint32())
   draw.Ellipse(300, 300, 50, 100, rand.Uint32())
   draw.Arc(200, 200, 50, 0.0, 2.0, rand.Uint32())
+  draw.PlotSin(100, 500, 200, rand.Uint32())
+  draw.PlotCircle(100, 100, 50, rand.Uint32())
+  draw.PlotBezier(100, 100, 100, 0, 500, 0, rand.Uint32())
+  draw.Box(100, 100, 200, 100, rand.Uint32())
   screen.Flip()
   
   for {
