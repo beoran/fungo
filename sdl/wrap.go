@@ -353,12 +353,13 @@ func LoadSurface(filename string) (*Surface) {
 // Loads the surface and accellerates it
 // Pass true for alpha if you want it to be transparent,
 // false if not
-func LoadFastSurface(filename string, alpha bool) {
-  s := LoadSurface(name)
+func LoadFastSurface(filename string, alpha bool) (*Surface) {
+  s := LoadSurface(filename)
+  if s == nil { return nil } 
   if alpha {
-    return s.AccelerateAlpha
+    return s.AccellerateAlpha()
   }
-  return s.Accellerate
+  return s.Accellerate()
 }
 
 // Makes sure that the given rectangle of the screen is updated

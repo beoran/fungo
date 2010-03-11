@@ -5,6 +5,7 @@ import "os"
 import "time"
 import "fungo/sdl"
 import "fungo/draw"
+// import "fungo/gui"
 import "rand"
 // import "tamias"
 // import "fungo/sdl"
@@ -166,7 +167,7 @@ func TestSurface() {
   img.BlitTo(screen, 20, 20)
   screen.Flip()
   rand.Seed(time.Nanoseconds())
-  draw := draw.FromSDL(screen) 
+  draw := draw.FromSDL(screen)
   draw.PutPixel(200, 200, rand.Uint32())
   draw.PutPixel(200, 250, rand.Uint32())
   draw.Line(200, 200, 200, 250, rand.Uint32())
