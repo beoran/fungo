@@ -333,13 +333,12 @@ func square(value float64) (float64) {
   return value * value 
 }
 
-// All the BresenHam* are based on algorithms from SGE, but I noted that
-// they actually come originally from Allegro, so it' the Allegro license
-// which applies. 
+// All the D* actually come originally from Allegro, 
+// so it's the Allegro giftware license which applies. 
 // Calls the callback for every point on the line (x1 y1) -> (x2 y2)
 func DoLine(x1, y1, x2, y2 int, callback DrawCallback) { 
   dx := x2 - x1
-  dy := y2 - y1    
+  dy := y2 - y1
   sdx := tern(dx < 0, -1 , 1) 
   sdy := tern(dy < 0, -1 , 1)
   dx = sdx * dx + 1

@@ -237,6 +237,13 @@ func Quit() {
    C.SDL_Quit()
 }
 
+// Initializes everything, enabling unicode in keyboard as well
+func InitDefault() {
+  Init(INIT_EVERYTHING)
+  EnableUnicode(1)
+  println("enableunicode:", EnableUnicode(-1))
+}
+
 
 // Error Handling
 

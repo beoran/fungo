@@ -3,6 +3,9 @@ package gui
 
 import "fungo/sdl"
 import "fungo/draw"
+import "reflect"
+import "fmt"
+import "utf8"
 //import "math"
 
 // Time mouse button must be down to generate a click
@@ -38,22 +41,55 @@ type Any interface {}
 // The object interface
 type Object interface {
   Any
-  Send(m Message, args... Any) (Any)
+  Send(m Message, args...Any) (Any)
   DefineMethod(messsage Message, method Method)
   GetMethod(mes Message) (Method)
 } 
 
 // Methods 
-type Method func(o Object, args ...Any) (Any)
+type Method Any
 
 // Mapping from messages to methdos
 type MessageMap map[Message] Method
 
-// Sends a message to an Object
-func Send(o Object, m Message, args ...Any) (Any) {
-  action := o.GetMethod(m)
+func error(msg string, args...) {
+  fmt.Println(msg, args)
+}
+
+// Can call any function with any arguments
+// Slow but flexible.
+// TODO: Think about what to do with the return values.
+// A raw []reflect.Value is not so interesting
+func DynamicCall(fun Any, args ...Any) (Any) {
+  fval, ok    := reflect.NewValue(fun).(*reflect.FuncValue)  
+  if ! ok { error("Not a function") ; return nil }
+  // fmt.Println(fval)
+  funkind, ok2 := fval.Type().(*reflect.FuncType)
+  if ! ok2 { error("Not a function") ; return nil } 
+  // fmt.Println(funkind, funkind.Name(), funkind.String(), funkind.NumIn())
+  nargs := funkind.NumIn()
+  vargs := make([]reflect.Value, nargs)
+  if len(args) < nargs { error("Too few arguments") ; return nil }
+  for i:= 0 ; i < nargs ; i ++ {
+    val := reflect.NewValue(args[i])
+    if val.Type() != funkind.In(i) { 
+      error("Wrong argument type: ", val.Type(), 
+      "expected", funkind.In(i) ) 
+      return nil
+    }
+    vargs[i] = val
+  }
+  results := fval.Call(vargs)
+  return results
+}
+
+// Sends a message to an Object. The object must be the first vararg
+func Send(m Message, args ...Any) (Any) {
+  obj, ok:= args[0].(Object)
+  if !ok { return nil }
+  action := obj.GetMethod(m)
   if action == nil { return nil }
-  return (action)(o, args)
+  return DynamicCall(action, args)
 } 
 
 
@@ -70,9 +106,7 @@ func NewObject() (Object) {
 
 // Sends a message to a basic object
 func (o * BasicObject) Send(m Message, args ...Any) (Any) {
-  action := o.GetMethod(m)
-  if action == nil { return nil }
-  return (action)(o, args)
+  return Send(m, o, args)  
 } 
         
     
@@ -168,7 +202,7 @@ func (h * Hanao) Update() {
     ev          := sdl.PollEvent()
     if ev == nil { break } 
     kind        := ev.Type    
-    Send(h, Message(kind), Event{ev, NewObject()})
+    Send(Message(kind), h, ev)
     // call the handler
   }
 }
@@ -192,6 +226,8 @@ func (h * Hanao) Init(screen * sdl.Surface) {
   // Cursor for focusing
   // XXX: Set up handlers
   h.Object.DefineMethod(Quit, OnQuit)
+  h.Object.DefineMethod(KeyDown, OnKeyDown)
+  h.Object.DefineMethod(KeyUp, OnKeyUp)
 }  
 
 // Sends events to every widget interested in it
@@ -219,28 +255,54 @@ func unwrapArgs(o Object, args ...Any) (*Hanao, *sdl.Event) {
 }
 
 // Called when the system wants to shutdown
-func  OnQuit(o Object, args ...Any) (Any) {
-      h, event:= unwrapArgs(o, args) 
-      println(event.Type)
+func  OnQuit(h * Hanao, event * sdl.Event) {
       h.done   = true
-      return h
 }
 
+// Transforms the keyboard event to a utf-8 encoded text
+// string
+// XXX: enableunicode doesnt seem to have any effect???
+func EventToText(kevent * sdl.KeyboardEvent) string {
+  keysym := kevent.Keysym
+  uc     := keysym.Unicode
+  fmt.Println("keysym", keysym, "uc:", uc)
+  if uc == 0 {
+    uc = uint16(int(keysym.Sym)) 
+    // return "" 
+  }
+  var ch byte  
+  if (uc & 0xFF80) == 0 {
+    ch = byte(uc & 0x7F)
+    s := make([]byte, 1 )
+    s[0] = ch
+    return string(s)
+  }
+  l   := utf8.RuneLen(int(uc))
+  buf := make([]byte, l) 
+  utf8.EncodeRune(int(uc), buf)  
+  return string(buf)
+  
+} 
+
 // Called when key is pressed
-func OnKeydown(h * Hanao, event * sdl.Event) {
+func OnKeyDown(h * Hanao, event * sdl.Event) {
   kevent := event.Keyboard()
-  text   := "" // CleanupUnicode(kevent)
-  // keyboard.press(event.sym, event.mod, text)          
-  h.sendToWidgets(KeyDown, kevent.Keysym, kevent.Keysym.Mod, text)
+  text   := EventToText(kevent)
+  fmt.Println("keyup", kevent, "text:", text)
+  // text   := "" // CleanupUnicode(kevent)
+  // keyboard.press(event.sym, event.mod, text)
+  // h.sendToWidgets(KeyDown, kevent.Keysym, kevent.Keysym.Mod, text)
 }
     
 // Called when key is released
-func OnKeyup(h * Hanao, event * sdl.Event) {
+func OnKeyUp(h * Hanao, event * sdl.Event) {
   kevent := event.Keyboard()
-  text   := "" // CleanupUnicode(kevent)
+  text   := EventToText(kevent)
+  fmt.Println("keyup", kevent, "text:", text)
+  // text   := "" // CleanupUnicode(kevent)
   // text    = cleanup_unicode(event)
   // state   = keyboard.state(event.sym)
-  h.sendToWidgets(KeyUp, kevent.Keysym, kevent.Keysym.Mod, text)  
+  // h.sendToWidgets(KeyUp, kevent.Keysym, kevent.Keysym.Mod, text)  
   // keyboard.release(event.sym)
 }
 

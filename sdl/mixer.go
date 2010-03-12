@@ -13,6 +13,7 @@ package sdl
 //#include <SDL_ttf.h>
 import "C"
 import "unsafe"
+import "runtime"
 
 // The default mixer has 8 simultaneous mixing channels 
 const CHANNELS = 8
@@ -490,40 +491,58 @@ func LoadMusic(filename string) (* Music) {
   result.music = LoadMUS(filename)
   if result.music == nil { return nil }
   clean           := func(m * Music) { m.Free() }  
-  runtime.SetFinalizer(result, clean})  return result  
+  runtime.SetFinalizer(result, clean)  
+  return result  
 } 
+
+// Returns true if the music is unusable of has alredy been freed
+func (music * Music) Destroyed() (bool) {
+  if music == nil { return true } 
+  if music.music == nil { return true}
+  return false
+}
 
 // Frees the memory associated with this music
 func (music * Music) Free() {
-  if music.music == nil { return }
+  if music.Destroyed() { return }
   FreeMusic(music.music)
 }
 
 // Plays the music indefinitely 
-func (music * Music) Play() {
-  if music.music == nil { return }
+func (music * Music) Play() {  
+  if music.Destroyed() { return }
   PlayMusic(music.music, -1)
 }
 
 // Pauses the music
 func (music * Music) Pause() {
+  if music.Destroyed() { return }
   PauseMusic()
 }
 
 // Stops the music
 func (music * Music) Stop() {
+  if music.Destroyed() { return }
   StopMusic()
 }
 
 // Resumes the music
 func (music * Music) Resume() {
- ResumeMusic()
+  if music.Destroyed() { return }
+  ResumeMusic()
 }
 
 // Rewinds the music
 func (music * Music) Rewind() {
+  if music.Destroyed() { return }
   RewindMusic()
 }
+
+// Fades out the music in ms milliseconds
+func (music * Music) FadeOut(ms int) {
+  if music.Destroyed() { return }
+  FadeOutMusic(ms)
+} 
 
 
 // loads a wave file from a .wav or .ogg file 
@@ -534,13 +553,21 @@ func LoadSound(filename string) (* Sound) {
   result.channel   = -1
   if result.chunk == nil { return nil }
   clean           := func(s * Sound) { s.Free() }  
-  runtime.SetFinalizer(result, clean}
+  runtime.SetFinalizer(result, clean)
   return result
 } 
 
+// Returns true if the sound is unusable of has alredy been freed
+func (sound * Sound) Destroyed() (bool) {
+  if sound == nil { return true } 
+  if sound.chunk == nil { return true}
+  return false
+}
+
+
 // Frees the mmemory associated with this wave
 func (wave * Sound) Free() {
-  if wave.chunk == nil { return }
+  if wave.Destroyed() { return }
   FreeSound(wave.chunk)
 }
 
@@ -565,7 +592,7 @@ func (wave * Sound) SetChannel(channel Channel) (Channel) {
 
 // Plays the wave one time on it's channel 
 func (wave * Sound) Play() {
-  if wave.chunk == nil { return }
+  if wave.Destroyed() { return }  
   PlayChannel(int(wave.channel), wave.chunk, 0)   
 }
 
