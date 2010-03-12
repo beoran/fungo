@@ -264,15 +264,15 @@ func  OnQuit(h * Hanao, event * sdl.Event) {
 // string
 // XXX: enableunicode doesnt seem to have any effect???
 func EventToText(kevent * sdl.KeyboardEvent) string {
-  keysym := kevent.Keysym
-  uc     := keysym.Unicode
-  mods   := int(keysym.Mod)
+  keysym := kevent.Keysym()
+  uc     := keysym.Unicode()
+  mods   := int(keysym.Mod())
   upper  := (mods & sdl.KMOD_LSHIFT) > 0 ||  
             (mods & sdl.KMOD_RSHIFT) > 0 || 
             (mods & sdl.KMOD_CAPS)   > 0 
   fmt.Println("keysym", keysym, "uc:", uc)
   if uc == 0 {
-    uc = uint16(int(keysym.Sym)) 
+    uc = int(keysym.Sym())
     // return "" 
   }
   var ch byte  

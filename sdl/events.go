@@ -87,136 +87,236 @@ var (
 )
 const ALLEVENTS		= SDL_EventMasks(0xFFFFFFFF)
 
+type ActiveEvent 	C.SDL_ActiveEvent 
+type KeyboardEvent 	C.SDL_KeyboardEvent
+type MouseMotionEvent 	C.SDL_MouseMotionEvent
+type MouseButtonEvent 	C.SDL_MouseButtonEvent
+type JoyAxisEvent	C.SDL_JoyAxisEvent
+type JoyBallEvent 	C.SDL_JoyBallEvent
+type JoyHatEvent 	C.SDL_JoyHatEvent
+type JoyButtonEvent 	C.SDL_JoyButtonEvent
+type ResizeEvent	C.SDL_ResizeEvent
+type ExposeEvent	C.SDL_ExposeEvent
+type QuitEvent		C.SDL_QuitEvent
+type UserEvent 		C.SDL_UserEvent
+type SysWMmsg 		C.SDL_SysWMmsg
+type SysWMEvent		C.SDL_SysWMEvent
+
+
+type EventUnion 	C.SDL_Event
+// Little trick we use here to get a type field in there
+type Event struct {
+	Type uint8
+	Pad0 [31]byte 
+	// sizeof(SDL_Event) is 20 on a 32 bits platform 
+	// but to be sure on 64 bit platforms, I made it a bit bigger
+}
+
+type Keysym		C.SDL_keysym 
+
 // Predefined event masks 
-// Not imported due to limitations in cgo
+func (e * ActiveEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
 
-// Application visibility event structure 
-/*
-typedef struct SDL_ActiveEvent {
-	Uint8 type;	// SDL_ACTIVEEVENT 
-	Uint8 gain;	// Whether given states were gained or lost (1/0) 
-	Uint8 state;	// A mask of the focus states 
-} SDL_ActiveEvent;
+// Whether given states were gained or lost (1/0) 
+func (e * ActiveEvent) Gain() (bool) {
+  return i2b(int(e.gain))
+}
 
-// Keyboard event structure 
-typedef struct SDL_KeyboardEvent {
-	Uint8 type;	// SDL_KEYDOWN or SDL_KEYUP 
-	Uint8 which;	// The keyboard device index 
-	Uint8 state;	// SDL_PRESSED or SDL_RELEASED 
-	SDL_keysym keysym;
-} SDL_KeyboardEvent;
+// A mask of the focus states 
+func (e * ActiveEvent) State() (byte) {
+  return byte(e.state)
+}
 
-// Mouse motion event structure 
-typedef struct SDL_MouseMotionEvent {
-	Uint8 type;	// SDL_MOUSEMOTION 
-	Uint8 which;	// The mouse device index 
-	Uint8 state;	// The current button state 
-	Uint16 x, y;	// The X/Y coordinates of the mouse 
-	Sint16 xrel;	// The relative motion in the X direction 
-	Sint16 yrel;	// The relative motion in the Y direction 
-} SDL_MouseMotionEvent;
+// A mask of the focus states 
+func (e * KeyboardEvent) State() (byte) {
+  return byte(e.state)
+}
 
-// Mouse button event structure 
-typedef struct SDL_MouseButtonEvent {
-	Uint8 type;	// SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP 
-	Uint8 which;	// The mouse device index 
-	Uint8 button;	// The mouse button index 
-	Uint8 state;	// SDL_PRESSED or SDL_RELEASED 
-	Uint16 x, y;	// The X/Y coordinates of the mouse at press time 
-} SDL_MouseButtonEvent;
+// Which keyboard generated the event
+func (e * KeyboardEvent) Which() (byte) {
+  return byte(e.which)
+}
 
-// Joystick axis motion event structure 
-typedef struct SDL_JoyAxisEvent {
-	Uint8 type;	// SDL_JOYAXISMOTION 
-	Uint8 which;	// The joystick device index 
-	Uint8 axis;	// The joystick axis index 
-	Sint16 value;	// The axis value (range: -32768 to 32767) 
-} SDL_JoyAxisEvent;
+// Type of the event
+func (e * MouseMotionEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
 
-// Joystick trackball motion event structure 
-typedef struct SDL_JoyBallEvent {
-	Uint8 type;	// SDL_JOYBALLMOTION 
-	Uint8 which;	// The joystick device index 
-	Uint8 ball;	// The joystick trackball index 
-	Sint16 xrel;	// The relative motion in the X direction 
-	Sint16 yrel;	// The relative motion in the Y direction 
-} SDL_JoyBallEvent;
+// Which mouse generated the event
+func (e * MouseMotionEvent) Which() (byte) {
+  return byte(e.which)
+}
 
-// Joystick hat position change event structure 
-typedef struct SDL_JoyHatEvent {
-	Uint8 type;	// SDL_JOYHATMOTION 
-	Uint8 which;	// The joystick device index 
-	Uint8 hat;	// The joystick hat index 
-	Uint8 value;	// The hat position value:
-			    SDL_HAT_LEFTUP   SDL_HAT_UP       SDL_HAT_RIGHTUP
-			    SDL_HAT_LEFT     SDL_HAT_CENTERED SDL_HAT_RIGHT
-			    SDL_HAT_LEFTDOWN SDL_HAT_DOWN     SDL_HAT_RIGHTDOWN
-			   Note that zero means the POV is centered.
-			
-} SDL_JoyHatEvent;
+// Current mouse button state
+func (e * MouseMotionEvent) State() (byte) {
+  return byte(e.state)
+}
+// Current X coordinates of cursor
+func (e * MouseMotionEvent) X() (int) {
+  return int(e.x)
+}
 
-// Joystick button event structure 
-typedef struct SDL_JoyButtonEvent {
-	Uint8 type;	// SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP 
-	Uint8 which;	// The joystick device index 
-	Uint8 button;	// The joystick button index 
-	Uint8 state;	// SDL_PRESSED or SDL_RELEASED 
-} SDL_JoyButtonEvent;
+// Current Y coordinates of cursor
+func (e * MouseMotionEvent) Y() (int) {
+  return int(e.y)
+}
 
-// The "window resized" event
-   When you get this event, you are responsible for setting a new video
-   mode with the new width and height.
- 
-typedef struct SDL_ResizeEvent {
-	Uint8 type;	// SDL_VIDEORESIZE 
-	int w;		// New width 
-	int h;		// New height 
-} SDL_ResizeEvent;
+// Relative motion along X axis
+func (e * MouseMotionEvent) XRel() (int) {
+  return int(e.xrel)
+}
+// Relatve motion along Y axis
+func (e * MouseMotionEvent) YRel() (int) {
+  return int(e.yrel)
+}
 
-// The "screen redraw" event 
-typedef struct SDL_ExposeEvent {
-	Uint8 type;	// SDL_VIDEOEXPOSE 
-} SDL_ExposeEvent;
+// Type of the event
+func (e * MouseButtonEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
 
-// The "quit requested" event 
-typedef struct SDL_QuitEvent {
-	Uint8 type;	// SDL_QUIT 
-} SDL_QuitEvent;
+// Which mouse generated the event
+func (e * MouseButtonEvent) Which() (byte) {
+  return byte(e.which)
+}
 
-// A user-defined event type 
-typedef struct SDL_UserEvent {
-	Uint8 type;	// SDL_USEREVENT through SDL_NUMEVENTS-1 
-	int code;	// User defined event code 
-	void *data1;	// User defined data pointer 
-	void *data2;	// User defined data pointer 
-} SDL_UserEvent;
+// The button that was pressed or released
+func (e * MouseButtonEvent) Button() (byte) {
+  return byte(e.button)
+}
 
-// If you want to use this event, you should include SDL_syswm.h 
-struct SDL_SysWMmsg;
-typedef struct SDL_SysWMmsg SDL_SysWMmsg;
-typedef struct SDL_SysWMEvent {
-	Uint8 type;
-	SDL_SysWMmsg *msg;
-} SDL_SysWMEvent;
+// PRESSED or RELEASED
+func (e * MouseButtonEvent) State() (byte) {
+  return byte(e.state)
+}
 
-// General event structure 
-typedef union SDL_Event {
-	Uint8 type;
-	SDL_ActiveEvent active;
-	SDL_KeyboardEvent key;
-	SDL_MouseMotionEvent motion;
-	SDL_MouseButtonEvent button;
-	SDL_JoyAxisEvent jaxis;
-	SDL_JoyBallEvent jball;
-	SDL_JoyHatEvent jhat;
-	SDL_JoyButtonEvent jbutton;
-	SDL_ResizeEvent resize;
-	SDL_ExposeEvent expose;
-	SDL_QuitEvent quit;
-	SDL_UserEvent user;
-	SDL_SysWMEvent syswm;
-} SDL_Event;
-*/
+// X coordinates of click or release
+func (e * MouseButtonEvent) X() (int) {
+  return int(e.x)
+}
+
+// Y coordinates of click or release
+func (e * MouseButtonEvent) Y() (int) {
+  return int(e.y)
+}
+
+// Type of the event
+func (e * JoyAxisEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+// Which joystick generated the event
+func (e * JoyAxisEvent) Which() (byte) {
+  return byte(e.which)
+}
+
+// Which axis moved
+func (e * JoyAxisEvent) Axis() (byte) {
+  return byte(e.which)
+}
+
+// Joystick axis current value
+func (e * JoyAxisEvent) Value() (int) {
+  return int(e.value)
+}
+
+// Type of the event
+func (e * JoyBallEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+// Which joystick generated the event
+func (e * JoyBallEvent) Which() (byte) {
+  return byte(e.which)
+}
+
+// Which ball on the joystick generated the event
+func (e * JoyBallEvent) Ball() (byte) {
+  return byte(e.which)
+}
+
+// Relative motion along X axis
+func (e * JoyBallEvent) XRel() (int) {
+  return int(e.xrel)
+}
+
+// Relatve motion along Y axis
+func (e * JoyBallEvent) YRel() (int) {
+  return int(e.yrel)
+}
+
+// Type of the event
+func (e * JoyHatEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+// Which joystick generated the event
+func (e * JoyHatEvent) Which() (byte) {
+  return byte(e.which)
+}
+
+// Which hat moved
+func (e * JoyHatEvent) Hat() (byte) {
+  return byte(e.which)
+}
+
+// Joystick hat current value
+func (e * JoyHatEvent) Value() (byte) {
+  return byte(e.value)
+}
+
+
+// Type of the event
+func (e * JoyButtonEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+// Which joystick generated the event
+func (e * JoyButtonEvent) Which() (byte) {
+  return byte(e.which)
+}
+
+// The button that was pressed or released
+func (e * JoyButtonEvent) Button() (byte) {
+  return byte(e.button)
+}
+
+// PRESSED or RELEASED
+func (e * JoyButtonEvent) State() (byte) {
+  return byte(e.state)
+}
+
+func (e * ResizeEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+func (e * ResizeEvent) W() (int) {
+  return int(e.w)
+}
+
+func (e * ResizeEvent) H() (int) {
+  return int(e.h)
+}
+
+func (e * ExposeEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+func (e * QuitEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+// TODO: make UserEvent actually useful.
+// data1, data2
+func (e * UserEvent) Type() (byte) {
+  return GetType(ptr(e))  
+}
+
+func (e * UserEvent) Code() (int) {
+  return int(e.code)  
+}
 
 
 // Pumps the event loop, gathering events from the input devices.
@@ -328,3 +428,32 @@ func QuitRequested() (bool) {
 	  C.Uint32(QUITMASK))))
 }	
 
+func GetType(e ptr) (uint8) { 
+  return ((*Event)(e)).Type
+}
+
+func (e * KeyboardEvent) Type() (uint8) {
+  return GetType(ptr(e))
+}
+
+
+func (e * KeyboardEvent) Keysym() (*Keysym) {
+  return (*Keysym)(&e.keysym)
+}
+
+
+func (k * Keysym) Unicode() (int) {
+  return int(k.unicode)
+}
+
+func (k * Keysym) Mod() (byte) {
+  return byte(k.mod)
+}
+
+func (k * Keysym) Sym() (int) {
+  return int(k.sym)
+}
+
+func (k * Keysym) Scancode() (int) {
+  return int(k.scancode)
+}
