@@ -489,7 +489,8 @@ func LoadMusic(filename string) (* Music) {
   result      := new(Music)
   result.music = LoadMUS(filename)
   if result.music == nil { return nil }
-  return result  
+  clean           := func(m * Music) { m.Free() }  
+  runtime.SetFinalizer(result, clean})  return result  
 } 
 
 // Frees the memory associated with this music
@@ -532,6 +533,8 @@ func LoadSound(filename string) (* Sound) {
   result.chunk     = LoadWAV(filename)
   result.channel   = -1
   if result.chunk == nil { return nil }
+  clean           := func(s * Sound) { s.Free() }  
+  runtime.SetFinalizer(result, clean}
   return result
 } 
 
