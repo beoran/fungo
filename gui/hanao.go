@@ -7,6 +7,7 @@ import "reflect"
 import "fmt"
 import "utf8"
 //import "math"
+import "bytes"
 
 // Time mouse button must be down to generate a click
 const CLICK_TIME    = 0.5
@@ -265,6 +266,10 @@ func  OnQuit(h * Hanao, event * sdl.Event) {
 func EventToText(kevent * sdl.KeyboardEvent) string {
   keysym := kevent.Keysym
   uc     := keysym.Unicode
+  mods   := int(keysym.Mod)
+  upper  := (mods & sdl.KMOD_LSHIFT) > 0 ||  
+            (mods & sdl.KMOD_RSHIFT) > 0 || 
+            (mods & sdl.KMOD_CAPS)   > 0 
   fmt.Println("keysym", keysym, "uc:", uc)
   if uc == 0 {
     uc = uint16(int(keysym.Sym)) 
@@ -275,11 +280,13 @@ func EventToText(kevent * sdl.KeyboardEvent) string {
     ch = byte(uc & 0x7F)
     s := make([]byte, 1 )
     s[0] = ch
+    if upper { return string(bytes.ToUpper(s))  }  
     return string(s)
   }
   l   := utf8.RuneLen(int(uc))
   buf := make([]byte, l) 
   utf8.EncodeRune(int(uc), buf)  
+  if upper { return string(bytes.ToUpper(buf))  }
   return string(buf)
   
 } 
