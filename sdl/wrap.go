@@ -546,10 +546,11 @@ func (event * Event) Kind() (uint8) {
 // Polls the event queue, returning nil if no events are available
 // or if the event gets caught  
 func PollEvent() (* Event) {
-  event := &Event{}
-  ok    := pollEvent((*C.SDL_Event)(unsafe.Pointer(event)))
+  var sevent C.SDL_Event
+  //ok    := pollEvent((*C.SDL_Event)(unsafe.Pointer(event)))
+  ok    := pollEvent(&sevent)
   if ok == 0 { return nil; } 
-  return event
+  return (*Event)(ptr(&sevent))
 }
 
 // Pushes an event to the event queue

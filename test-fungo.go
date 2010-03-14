@@ -186,18 +186,19 @@ func TestSurface() {
   draw.Box(100, 100, 200, 100, rand.Uint32())
   screen.Flip()
   
+  var ev * sdl.Event;
   for {
-    ev := sdl.PollEvent()
+    ev = sdl.PollEvent()
     if ev == nil { continue }  
     // fmt.Println("Event type:", ev.Type)
-    kb := ev.Keyboard() 
+    kb := ev.Keyboard()
     if kb != nil {  
       fmt.Println(kb); 
     }
     if ev.Quit() != nil { 
       break 
     }
-  } 
+  }
   // Flush event queue iuntil quit requested
   // event := sdl.WaitEvent()
   // fmt.Println("Event type:", event.Type)
@@ -216,7 +217,7 @@ func TestSound() {
   sdl.OpenMixerDefault()
   mus := sdl.LoadMusic("data/ufsjin.mid")
   snd := sdl.LoadSound("data/pugs.wav") 
-  defer snd.Free() 
+  defer snd.Free()
   defer mus.Free() 
   fmt.Println(mus, snd)
   mus.Play()   
@@ -230,11 +231,11 @@ func TestSound() {
 
 func main()	{
   TestSetup()
-  TestSound()
+  TestSound()  
   TestJoystick()
   TestSurface()
   TestCpuinfo()
-  TestKeyboard()
+  TestKeyboard()  
   TestInit()
   TestCD()
   TestError()  

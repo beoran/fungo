@@ -13,7 +13,7 @@ package sdl
 //#include <SDL_ttf.h>
 import "C"
 import "unsafe"
-import "runtime"
+// import "runtime"
 
 // The default mixer has 8 simultaneous mixing channels 
 const CHANNELS = 8
@@ -490,8 +490,8 @@ func LoadMusic(filename string) (* Music) {
   result      := new(Music)
   result.music = LoadMUS(filename)
   if result.music == nil { return nil }
-  clean           := func(m * Music) { m.Free() }  
-  runtime.SetFinalizer(result, clean)  
+  // clean           := func(m * Music) { m.Free() }  
+  // runtime.SetFinalizer(result, clean)  
   return result  
 } 
 
@@ -503,6 +503,7 @@ func (music * Music) Destroyed() (bool) {
 }
 
 // Frees the memory associated with this music
+// XXX this crashes somehow when called through sethandler()
 func (music * Music) Free() {
   if music.Destroyed() { return }
   FreeMusic(music.music)
@@ -552,8 +553,9 @@ func LoadSound(filename string) (* Sound) {
   result.chunk     = LoadWAV(filename)
   result.channel   = -1
   if result.chunk == nil { return nil }
-  clean           := func(s * Sound) { s.Free() }  
+  /* clean           := func(s * Sound) { s.Free() }  
   runtime.SetFinalizer(result, clean)
+  */
   return result
 } 
 
@@ -566,6 +568,7 @@ func (sound * Sound) Destroyed() (bool) {
 
 
 // Frees the mmemory associated with this wave
+// XXX this crashes somehow when called through sethandler()
 func (wave * Sound) Free() {
   if wave.Destroyed() { return }
   FreeSound(wave.chunk)
