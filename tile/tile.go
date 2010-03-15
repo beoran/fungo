@@ -121,6 +121,17 @@ func (ts * TileSet) Add(tile *Tile, i int) {
   ts.tiles[i] = tile
 }
 
+
+// A camera actively defines the current view of the visible 2D game world
+type Camera struct {
+  // Position of camera top left corner
+  X, Y int
+  // Field of view. Normally equal to screen size.
+  W, H int
+}
+
+
+
 type Layer struct {
   // width and height in number of tiles
   w, h int
@@ -170,11 +181,12 @@ func (l * Layer) Get(x, y int) (* Tile) {
   return l.tiles[y][x]
 }
 
-func (l * Layer) Draw(screen * sdl.Surface, x, y int) {   
-    txstart    := ( x / l.tilewide )
-    tystart    := ( y / l.tilehigh )
-    xtilestop  := (screen.W() / l.tilewide) + 1
-    ytilestop  := (screen.H() / l.tilehigh) + 1
+// Draws the layer to the creen using a given camera
+func (l * Layer) DrawCamera(screen * sdl.Surface, cam * Camera) {   
+    txstart    := ( cam.X / l.tilewide )
+    tystart    := ( cam.Y / l.tilehigh )
+    xtilestop  := ( cam.W / l.tilewide) + 1
+    ytilestop  := ( cam.H / l.tilehigh) + 1
     txstop     := xtilestop + txstart
     tystop     := ytilestop + tystart
     drawx      := 0
@@ -188,12 +200,12 @@ func (l * Layer) Draw(screen * sdl.Surface, x, y int) {
     if (txstop  > l.w) { txstop  = l.w }
     if (tystop  > l.h) { tystop  = l.h }
     // We start drawing here
-    drawy       = -y + ( (tystart-1) * l.tilehigh )
+    drawy       = - cam.Y + ( (tystart-1) * l.tilehigh )
     // start iterating
     tydex    :=  tystart
     for tydex < tystop {
       drawy  += l.tilehigh;
-      drawx   = -x + ( (txstart-1) * l.tilewide )
+      drawx   = -cam.X + ( (txstart-1) * l.tilewide )
       txdex  := txstart
       for txdex < txstop {
         drawx   += l.tilewide        
@@ -206,11 +218,57 @@ func (l * Layer) Draw(screen * sdl.Surface, x, y int) {
     }  
 }
 
+// Draws the layer to the screen using x and y as the corner coordinates
+func (l * Layer) Draw(screen * sdl.Surface, x, y int) {   
+  cam := &Camera{x, y, screen.W(), screen.H()}
+  l.DrawCamera(screen, cam)
+}
+
+// A direction is a direction in which a Sprite is moving
+type Direction int
+
+const (
+  ALL_DIRECTIONS	= Direction(iota)
+  NORTH 		
+  EAST
+  SOUTH
+  WEST
+)
+
+// An animation is a single set of frames which are displayed sequentially 
+// when the sprite  performs an action in a given direction
+type Animation struct {
+  frames 	     []*Frame
+  active   	       *Frame
+  size, capacity 	int
+  index			int
+  direction		Direction
+  next			map[int] int
+}
+
+// An action is a set of animations which the sprite
+// can perform in several directions.
+type Action struct {
+  animations map[Direction] Animation
+}
 
 
 
+// A tile map consists of different layers
+type TileMap struct {
+  // The layers
+  layers [] *Layer;
+  // Layers that are in the tile map and that can be in the tile map
+  size, capacity int;  
+}
 
-
+// Makes a new map with the given amount of layers
+func NewTileMap(size int) (* TileMap) {
+  tm 	   := &TileMap{}
+  tm.size   = size
+  tm.layers = make([]*Layer, tm.size)
+  return tm
+}
 
 
 
