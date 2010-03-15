@@ -467,6 +467,15 @@ func (src * Surface) BlitTo(dst * Surface, x, y int) {
   blitSurface(src.surface, dst.surface, nil, &dstrect)
 }
 
+// Blits the entire src surface to the dst surface 
+// using x, and y as the coordinates of the upper left corner
+// Note that the right way of calling this is screen.Blit(bsurface, x, y)
+func (dst * Surface) Blit(src * Surface, x, y int) {
+  rect    := Rect{ int16(x), int16(y), 0, 0}
+  dstrect := rect.toSDL()  
+  blitSurface(src.surface, dst.surface, nil, &dstrect)
+}
+
 // This function performs a fast fill of the given rectangle with 'color'
 // If 'dstrect' is nil, the whole surface will be filled with 'color'
 func (dst * Surface) FillRect(dstrect * Rect, color uint32) (int) {

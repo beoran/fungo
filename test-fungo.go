@@ -7,6 +7,7 @@ import "fungo/sdl"
 import "fungo/draw"
 // import "fungo/gui"
 import "rand"
+import "fungo/tile"
 // import "tamias"
 // import "fungo/sdl"
 /*
@@ -154,18 +155,44 @@ func TestSurface() {
   // screen.Unlock()
   stop := sdl.GetTicks()
   fmt.Println("1 screen of 400 px drawn in ", stop - start)
-  tile := sdl.LoadSurface("data/tile_aqua.png")
-  defer tile.Free()
-  tile.BlitTo(screen, 20, 20)
+  frame := sdl.LoadSurface("data/tile_aqua.png")
+  frame.Accellerate() // Very important, this one! ^_^
+  defer frame.Free()
+  frame.BlitTo(screen, 20, 20)
   screen.Flip()
   
   font := sdl.LoadTTFont("data/sazanami-gothic.ttf", 24)
   defer font.Free()
   img := font.RenderBlended("Hello 世界!", white)
   defer img.Free()
+  ti  := tile.NewTile(tile.NORMAL, 8)
+  ti.Add(frame)
+  // ts   := tile.NewTileSet(32, 32)  
+  // ts.Add(ti, -1)
+  layer:= tile.NewLayer(100, 100, 32, 32)
+  for x := 0; x< 100; x++ { 
+    for y := 0; y< 100; y++ { 
+      layer.Set(x, y, ti) 
+    }
+  }
   
-  img.BlitTo(screen, 20, 20)
-  screen.Flip()
+
+  
+  
+  start1 := sdl.GetTicks()
+  repeats := uint32(1000)
+  for i:= uint32(0) ; i <  repeats ; i++ { 
+    layer.Draw(screen, 35, 35)   
+    layer.Draw(screen, 35, 35)   
+    layer.Draw(screen, 35, 35)   
+    layer.Draw(screen, 35, 35)
+    screen.Flip()
+  }    
+  stop1 := sdl.GetTicks()
+  delta := stop1 - start1
+  fps   := repeats * 1000 / delta
+  fmt.Println("Repeats delta fps:", repeats, delta, fps)
+  img.BlitTo(screen, 20, 20)  
   rand.Seed(time.Nanoseconds())
   draw := draw.FromSDL(screen)
   draw.PutPixel(200, 200, rand.Uint32())
@@ -184,7 +211,11 @@ func TestSurface() {
   draw.PlotCircle(100, 100, 50, rand.Uint32())
   draw.PlotBezier(100, 100, 100, 0, 500, 0, rand.Uint32())
   draw.Box(100, 100, 200, 100, rand.Uint32())
+  
+  
+  
   screen.Flip()
+  
   
   var ev * sdl.Event;
   for {
@@ -231,7 +262,7 @@ func TestSound() {
 
 func main()	{
   TestSetup()
-  TestSound()  
+  // TestSound()  
   TestJoystick()
   TestSurface()
   TestCpuinfo()
