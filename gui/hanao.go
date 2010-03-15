@@ -9,6 +9,7 @@ import "utf8"
 //import "math"
 import "bytes"
 
+
 // Time mouse button must be down to generate a click
 const CLICK_TIME    = 0.5
 // Time keyboard button must be down to generate a repeat
@@ -128,35 +129,55 @@ type Event struct {
   *sdl.Event
   Object
 } 
-  
-    
-    
+
+
 func LoadImage(fname string) (* sdl.Surface) {
   // fname = Fimyfi.join(self.image_dir, *names)
   return sdl.LoadFastSurface(fname, true) 
 }
 
-type Style struct {
-  
+
+// Packed RRGGBBAA color, like SDL sometimes uses 
+type Color int32
+
+
+type Colors struct {  
+    Border, Background, Highlight, Shadow, Text Color
 }
 
+type Style struct {
+  sdl.TTFont
+  Colors
+}
+
+// Current keyboard state
 type Keyboard struct {
   
 }
 
-type Mouse struct {
-  
+// Current and previous  mouse state
+type Mouse struct { 
+  X, Y int
+  OldX, OldY int
+  Buttons byte
+  OldButtons byte  
 }
+
+func (m * Mouse) Move(newx, newy int) {
+  m.OldX, m.OldY = m.X, m.Y
+  m.X   , m.Y    = newx, newy
+} 
 
 type Joysticks struct {
   
 }
 
 const (
-  Active  = Message(sdl.ACTIVEEVENT)
-  KeyDown = Message(sdl.KEYUP)
-  KeyUp   = Message(sdl.KEYDOWN)
-  Quit    = Message(sdl.QUIT)
+  Active        = Message(sdl.ACTIVEEVENT)
+  KeyDown       = Message(sdl.KEYUP)
+  KeyUp         = Message(sdl.KEYDOWN)
+  MouseMotion   = Message(sdl.MOUSEMOTION)
+  Quit          = Message(sdl.QUIT)
 )
 
 
@@ -197,12 +218,12 @@ func (h * Hanao) Done() (bool) {
 }
     
     
-// Polls the SDL state to update the GUI    
+// Polls the SDL state to update the GUI 
 func (h * Hanao) Update() {
   for { 
     ev          := sdl.PollEvent()
-    if ev == nil { break } 
-    kind        := ev.Type    
+    if ev == nil { break }
+    kind        := ev.Type
     Send(Message(kind), h, ev)
     // call the handler
   }
@@ -229,6 +250,7 @@ func (h * Hanao) Init(screen * sdl.Surface) {
   h.Object.DefineMethod(Quit, OnQuit)
   h.Object.DefineMethod(KeyDown, OnKeyDown)
   h.Object.DefineMethod(KeyUp, OnKeyUp)
+  h.Object.DefineMethod(MouseMotion, OnMouseMotion)
 }  
 
 // Sends events to every widget interested in it
@@ -315,6 +337,9 @@ func OnKeyUp(h * Hanao, event * sdl.Event) {
 
 // Called when the mouse moves
 func OnMouseMotion(h * Hanao, event * sdl.Event) {
+  mevent := event.MouseMotion();
+  h.Mouse.Move(mevent.X(), mevent.Y())
+  fmt.Println("motion", h.Mouse.X, h.Mouse.Y)
 }
 /*
     old_x , old_y     = @mouse.x , @mouse.y
