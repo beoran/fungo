@@ -516,6 +516,7 @@ func (music * Music) Destroyed() (bool) {
 // Only works if the mixer has not been closed yet!
 func (music * Music) Free() {
   if music.Destroyed() { return }
+  music.Stop()
   FreeMusic(music.music)
 }
 
@@ -584,6 +585,8 @@ func (sound * Sound) Destroyed() (bool) {
 // XXX this crashes somehow when called through SetFinalizer()
 func (wave * Sound) Free() {
   if wave.Destroyed() { return }
+  HaltChannel(int(wave.channel))
+  // be sure it's not playing anymore! Should proably be checked even better.
   FreeSound(wave.chunk)
 }
 
@@ -609,7 +612,8 @@ func (wave * Sound) SetChannel(channel Channel) (Channel) {
 // Plays the wave one time on it's channel 
 func (wave * Sound) Play() {
   if wave.Destroyed() { return }  
-  PlayChannel(int(wave.channel), wave.chunk, 0)   
+  newchan := PlayChannel(int(wave.channel), wave.chunk, 0)   
+  wave.channel = Channel(newchan)
 }
 
 
