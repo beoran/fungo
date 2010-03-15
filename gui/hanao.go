@@ -262,7 +262,6 @@ func  OnQuit(h * Hanao, event * sdl.Event) {
 
 // Transforms the keyboard event to a utf-8 encoded text
 // string
-// XXX: enableunicode doesnt seem to have any effect???
 func EventToText(kevent * sdl.KeyboardEvent) string {
   keysym := kevent.Keysym()
   uc     := keysym.Unicode()

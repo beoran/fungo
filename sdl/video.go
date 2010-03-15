@@ -808,8 +808,10 @@ func FreeYUVOverlay(overlay * C.SDL_Overlay) {
 //
 // Set an attribute of the OpenGL subsystem before intialization.
 // extern DECLSPEC int SDLCALL SDL_GL_SetAttribute(SDL_GLattr attr, int value);
+func GLSetAttribute(attr, value int) (int) {
+  return int(C.SDL_GL_SetAttribute(C.SDL_GLattr(attr), C.int(value)))
+} 
 
-//
 // Get an attribute of the OpenGL subsystem from the windowing
 // interface, such as glX. This is of course different from getting
 // the values from SDL's internal OpenGL subsystem, which only
@@ -818,10 +820,19 @@ func FreeYUVOverlay(overlay * C.SDL_Overlay) {
 // Developers should track the values they pass into SDL_GL_SetAttribute
 // themselves if they want to retrieve these values.
 // extern DECLSPEC int SDLCALL SDL_GL_GetAttribute(SDL_GLattr attr, int* value);
+func GLGetAttribute(attr int) (int, int) {
+  var value C.int  
+  res := int(C.SDL_GL_GetAttribute(C.SDL_GLattr(attr), &value))
+  return res, int(value)
+} 
+
 
 //
 // Swap the OpenGL buffers, if double-buffering is supported.
 // extern DECLSPEC void SDLCALL SDL_GL_SwapBuffers(void);
+func GLSwapBuffers() {
+  C.SDL_GL_SwapBuffers() 
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
 // These functions allow interaction with the window manager, if any.        
