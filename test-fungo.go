@@ -135,8 +135,8 @@ func TestError() {
 
 //Tests some surface drawing and also some event handling
 func TestSurface() {
-  
-  screen := sdl.OpenScreen(640, 480, 32, sdl.FULLSCREEN)
+  var flags uint32 = sdl.HWSURFACE | sdl.ASYNCBLIT | sdl.DOUBLEBUF | sdl.ANYFORMAT  
+  screen := sdl.OpenScreen(640, 480, 32, flags)
   white  := sdl.Color{255, 255, 255, 0};
   col    := screen.MapRGB(255, 255,   0);
   colb   := screen.MapRGB(0, 0, 0);
