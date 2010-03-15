@@ -13,7 +13,7 @@ package sdl
 //#include <SDL_ttf.h>
 import "C"
 import "unsafe"
-// import "runtime"
+import "runtime"
 
 // The default mixer has 8 simultaneous mixing channels 
 const CHANNELS = 8
@@ -49,17 +49,23 @@ const (
   MUS_MP3
 )
 
+var MixerOpened bool = false
+
 func OpenMixerDefault() (bool) {
   format 	:= uint16(FAUDIO_U16LSB)
   chunksize 	:= 1024*8
   if BYTEORDER == BIG_ENDIAN { format = FAUDIO_U16MSB }   
-  return i2b(OpenMixer(DEFAULT_FREQUENCY, format, MIX_DEFAULT_CHANNELS, chunksize))
+  ok := (OpenMixer(DEFAULT_FREQUENCY, format, MIX_DEFAULT_CHANNELS, chunksize))
+  return ok 
 }
 
 // Open the mixer with a certain audio format 
-func OpenMixer(frequency int, format uint16, channels int, chunksize int) (int) { 
-  return int(C.Mix_OpenAudio(C.int(frequency), 
-             C.Uint16(format), C.int( channels), C.int(chunksize)))
+func OpenMixer(frequency int, format uint16, channels int, chunksize int) (bool) {     
+  res := (int(C.Mix_OpenAudio(C.int(frequency), 
+             C.Uint16(format), C.int( channels), C.int(chunksize))))
+  ok  := (res == 0)
+  MixerOpened  = ok 	     
+  return ok
 }
 
 // Dynamically change the number of channels managed by the mixer.
@@ -461,6 +467,7 @@ func GetChunk(channel int) (* C.Mix_Chunk) {
 // Close the mixer, halting all playing audio
 func CloseMixer() { 
   C.Mix_CloseAudio()
+  MixerOpened = false
 }
 
 // Wrappers
@@ -490,20 +497,23 @@ func LoadMusic(filename string) (* Music) {
   result      := new(Music)
   result.music = LoadMUS(filename)
   if result.music == nil { return nil }
-  // clean           := func(m * Music) { m.Free() }  
-  // runtime.SetFinalizer(result, clean)  
+  clean           := func(m * Music) { m.Free() }  
+  runtime.SetFinalizer(result, clean)  
   return result  
 } 
 
 // Returns true if the music is unusable of has alredy been freed
+// Also returns true if the audio mixer has not been opened yet, in which case
+// the music cannot be played nor deallocated
 func (music * Music) Destroyed() (bool) {
+  if !MixerOpened { return true } 
   if music == nil { return true } 
   if music.music == nil { return true}
   return false
 }
 
-// Frees the memory associated with this music
-// XXX this crashes somehow when called through sethandler()
+// Frees the memory associated with this music.
+// Only works if the mixer has not been closed yet!
 func (music * Music) Free() {
   if music.Destroyed() { return }
   FreeMusic(music.music)
@@ -553,14 +563,17 @@ func LoadSound(filename string) (* Sound) {
   result.chunk     = LoadWAV(filename)
   result.channel   = -1
   if result.chunk == nil { return nil }
-  /* clean           := func(s * Sound) { s.Free() }  
+  clean           := func(s * Sound) { s.Free() }  
   runtime.SetFinalizer(result, clean)
-  */
+  
   return result
 } 
 
 // Returns true if the sound is unusable of has alredy been freed
+// Also returns true if the audio mixer has not been opened yet, in which case
+// the music cannot be played nor deallocated
 func (sound * Sound) Destroyed() (bool) {
+  if !MixerOpened { return true }
   if sound == nil { return true } 
   if sound.chunk == nil { return true}
   return false
@@ -568,7 +581,7 @@ func (sound * Sound) Destroyed() (bool) {
 
 
 // Frees the mmemory associated with this wave
-// XXX this crashes somehow when called through sethandler()
+// XXX this crashes somehow when called through SetFinalizer()
 func (wave * Sound) Free() {
   if wave.Destroyed() { return }
   FreeSound(wave.chunk)
