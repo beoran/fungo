@@ -136,7 +136,7 @@ func TestError() {
 //Tests some surface drawing and also some event handling
 func TestSurface() {
   
-  screen := sdl.OpenScreen(640, 480, 32, 0)
+  screen := sdl.OpenScreen(640, 480, 32, sdl.FULLSCREEN)
   white  := sdl.Color{255, 255, 255, 0};
   col    := screen.MapRGB(255, 255,   0);
   colb   := screen.MapRGB(0, 0, 0);
@@ -216,7 +216,7 @@ func TestSurface() {
   
   screen.Flip()
   
-  
+  /*
   var ev * sdl.Event;
   for {
     ev = sdl.PollEvent()
@@ -230,6 +230,7 @@ func TestSurface() {
       break 
     }
   }
+  */
   // Flush event queue iuntil quit requested
   // event := sdl.WaitEvent()
   // fmt.Println("Event type:", event.Type)
