@@ -8,6 +8,40 @@ import "fungo/sdl"
 // One frame of animation of a tile or a sprite.
 type Frame (*sdl.Surface)  
 
+
+// Offset describes where something, like a sprite should be drawn 
+type Offset struct {
+  X, Y int
+}
+
+// Moves the offset to x and y
+func (o Offset) MoveTo(x, y int) {
+  o.X = x
+  o.Y = y
+}
+
+// Moves the offset by dx and dy
+func (o Offset) MoveBy(dx, dy int) {
+  o.X += dx
+  o.Y += dy
+}
+
+// Adds this offset to the othe roffset and retuns a new offset 
+// that combines the effects of the individual offsets
+func (o1 Offset) AddOffset(o2 Offset) (Offset) {
+  return Offset { o1.X + o2.X, o1.Y + o2.Y }  
+}
+
+
+// A camera actively defines the current view of the visible 2D game world
+type Camera struct {
+  // Offset of position of camera top left corner in Map coordinates
+  Offset
+  // Field of view. Normally equal to screen size.
+  W, H int
+}
+
+
 // A TileInfo flag contains info about the tile.
 type TileInfo int32
 
@@ -129,13 +163,6 @@ func (ts * TileSet) Add(tile *Tile, i int) {
 }
 
 
-// A camera actively defines the current view of the visible 2D game world
-type Camera struct {
-  // Position of camera top left corner
-  X, Y int
-  // Field of view. Normally equal to screen size.
-  W, H int
-}
 
 
 
@@ -153,29 +180,6 @@ const (
 func (self Direction) Is(other Direction) (bool) {
   return (self & other) != 0
 } 
-
-// Offset describes where something, like a sprite should be drawn 
-type Offset struct {
-  X, Y int
-}
-
-// Moves the offset to x and y
-func (o Offset) MoveTo(x, y int) {
-  o.X = x
-  o.Y = y
-}
-
-// Moves the offset by dx and dy
-func (o Offset) MoveBy(dx, dy int) {
-  o.X += dx
-  o.Y += dy
-}
-
-// Adds this offset to the othe roffset and retuns a new offset 
-// that combines the effects of the individual offsets
-func (o1 Offset) AddOffset(o2 Offset) (Offset) {
-  return Offset { o1.X + o2.X, o1.Y + o2.Y }  
-}
 
 
 
@@ -336,7 +340,7 @@ type Layer struct {
   // the sprites that are present on this layer of the map
   // This is a set of pointers, because a sprite can be
   // present in several layers 
-  sprites map[int] Sprite  
+  sprites map[int] * Sprite  
 }
 
 func NewLayer(w, h, tw, th int) (* Layer) {
@@ -379,8 +383,8 @@ func (l * Layer) Get(x, y int) (* Tile) {
 
 // Draws the layer to the creen using a given camera
 func (l * Layer) DrawCamera(screen * sdl.Surface, cam * Camera) {   
-    txstart    := ( cam.X / l.tilewide )
-    tystart    := ( cam.Y / l.tilehigh )
+    txstart    := ( cam.Offset.X / l.tilewide )
+    tystart    := ( cam.Offset.Y / l.tilehigh )
     xtilestop  := ( cam.W / l.tilewide) + 1
     ytilestop  := ( cam.H / l.tilehigh) + 1
     txstop     := xtilestop + txstart
@@ -396,12 +400,12 @@ func (l * Layer) DrawCamera(screen * sdl.Surface, cam * Camera) {
     if (txstop  > l.w) { txstop  = l.w }
     if (tystop  > l.h) { tystop  = l.h }
     // We start drawing here
-    drawy       = - cam.Y + ( (tystart-1) * l.tilehigh )
+    drawy       = -cam.Offset.Y + ( (tystart-1) * l.tilehigh )
     // start iterating
     tydex    :=  tystart
     for tydex < tystop {
       drawy  += l.tilehigh;
-      drawx   = -cam.X + ( (txstart-1) * l.tilewide )
+      drawx     = -cam.Offset.X + ( (txstart-1) * l.tilewide )
       txdex  := txstart
       for txdex < txstop {
         drawx   += l.tilewide        
@@ -416,7 +420,7 @@ func (l * Layer) DrawCamera(screen * sdl.Surface, cam * Camera) {
 
 // Draws the layer to the screen using x and y as the corner coordinates
 func (l * Layer) Draw(screen * sdl.Surface, x, y int) {   
-  cam := &Camera{x, y, screen.W(), screen.H()}
+  cam := &Camera{Offset{x, y} , screen.W(), screen.H()}
   l.DrawCamera(screen, cam)
 }
 
