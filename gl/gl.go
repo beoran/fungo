@@ -12,6 +12,7 @@ import "C"
 import "unsafe"
 
 
+
 // Base GL types
 type GLenum     C.GLenum
 type GLboolean  C.GLboolean
@@ -31,6 +32,9 @@ type Pointer    unsafe.Pointer;
 
 // typedef void GLvoid;
 
+func GetIntegerv(index uint,  v1 * int) {
+  C.glGetIntegerv(C.GLenum(index), (*C.GLint)(Pointer(v1)))
+}
 
 func VertexAttrib1d(index uint, v1 float64) { 
   C.glVertexAttrib1d (C.GLuint(index), C.GLdouble(v1))

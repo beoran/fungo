@@ -39,10 +39,9 @@ func NewTile(info TileInfo, capacity int) (* Tile) {
   tile := &Tile{}
   tile.capacity = capacity
   tile.frames = make([]Frame, tile.capacity)
-  tile.active = nil
-  tile.index  = 0
   tile.size   = 0
   tile.info   = info
+  tile.Rewind()
   return tile
 }
 
@@ -56,7 +55,7 @@ func (t * Tile) Capacity() (int) {
   return t.capacity
 }
 
-
+// Adds a frame of animation to this tile 
 func (t * Tile) Add(frame Frame) (bool) {
   last := t.Size()
   if last >= t.Capacity() {
@@ -64,21 +63,28 @@ func (t * Tile) Add(frame Frame) (bool) {
     return false;
   }  
   t.frames[last] = frame 
-  t.index 	 = last
-  t.active       = t.frames[last]
-  t.size++  
+  t.size++
+  t.Rewind()  
   return true
 }
 
-
+// Retuns whether or not the tile is solid
 func (t * Tile) Solid() (bool) {
   return (t.info & SOLID) != 0
 }
 
+// Returns whether or not the tile is a water tile 
 func (t * Tile) Water() (bool) {
   return (t.info & WATER) != 0
 }
 
+// Rewind resets the tile to it's the first frame, which is frame 0 
+func (t * Tile) Rewind() {
+  t.index  = 0
+  t.active = t.frames[t.index]
+}
+
+// Updates the tile, advancing it's animation, if any
 func (t * Tile) Update() (int) {
   t.index++
   if t.index >= t.Size() {
@@ -116,6 +122,7 @@ func NewTileSet(wide, high int) (* TileSet){
   return ts
 }
 
+// Adds a tile to the tileset
 func (ts * TileSet) Add(tile *Tile, i int) {
   if i < 0 { i = ts.last ; ts.last++ } 
   ts.tiles[i] = tile
@@ -132,6 +139,191 @@ type Camera struct {
 
 
 
+// A direction is a direction in which a Sprite is moving
+type Direction int
+
+const (  	
+  NORTH          = Direction(1 << iota)
+  EAST
+  SOUTH
+  WEST
+  ALL_DIRECTIONS = NORTH | EAST | SOUTH | WEST
+)
+
+func (self Direction) Is(other Direction) (bool) {
+  return (self & other) != 0
+} 
+
+// Offset describes where something, like a sprite should be drawn 
+type Offset struct {
+  X, Y int
+}
+
+// Moves the offset to x and y
+func (o Offset) MoveTo(x, y int) {
+  o.X = x
+  o.Y = y
+}
+
+// Moves the offset by dx and dy
+func (o Offset) MoveBy(dx, dy int) {
+  o.X += dx
+  o.Y += dy
+}
+
+// Adds this offset to the othe roffset and retuns a new offset 
+// that combines the effects of the individual offsets
+func (o1 Offset) AddOffset(o2 Offset) (Offset) {
+  return Offset { o1.X + o2.X, o1.Y + o2.Y }  
+}
+
+
+
+// A Motion is a single set of frames which are displayed sequentially
+// according to a next frame index list when the sprite performs 
+// an action in a given direction.
+// For example, it could contain a set of frames showing the character 
+// walking north.
+type Motion struct {
+  frames 	        []Frame
+  active   	      Frame
+  size, capacity 	int
+  index			      int
+  direction		    Direction
+  next			      map[int] int
+  Offset
+  // offset of the motion with regards to the action
+}
+
+// Creates a new, empty motion
+func NewMotion(capacity int) (* Motion) {
+  m         := new(Motion)
+  m.frames   = make([]Frame, capacity)
+  m.capacity = capacity
+  m.size     = 0
+  m.Rewind()
+  return m
+}
+
+// Rewind resets the run to it's the first frame, which is frame 0 
+func (f * Motion) Rewind() {
+  f.index  = 0
+  f.active = f.frames[f.index]
+}
+
+// Updates and animates the motion
+func (f * Motion) Update() {  
+  newindex, ok := f.next[f.index] // Get next index.
+  // If not defined, rewind  
+  if (!ok) { 
+    f.Rewind()  
+    return
+  }
+  f.index  = newindex
+  f.active = f.frames[f.index]
+}
+
+// How many frames are in this tile
+func (f * Motion) Size() (int) {
+  return f.size
+}
+
+// How many frames can be added to this tile
+func (f * Motion) Capacity() (int) {
+  return f.capacity
+}
+
+// Adds a frame of animation to this tile 
+func (f * Motion) Add(frame Frame) (bool) {
+  last := f.Size()
+  if last >= f.Capacity() {
+    println("Could not add frame", f.size, f.capacity)
+    return false;
+  }  
+  f.frames[last] = frame   
+  f.size++  
+  f.Rewind()
+  
+  return true
+}
+
+// Draws the motion's active bitmat at the given coordinates
+func (m * Motion) Draw(screen * sdl.Surface, x, y int) {
+  if m == nil { return } // don't blit if the tile is nil.
+  active := m.active
+  if active == nil { return } // don't blit if no frame there yet.
+  screen.Blit(active, x, y)
+}
+
+
+// An action is a set of Runs which the sprite
+// can perform in one or several directions.
+type Action struct {
+  motions map[Direction] * Motion  
+  Offset
+  // offset of the action with regards to the Fragment
+}
+
+// Creates a new action
+func NewAction() (* Action) {
+  a := new(Action)
+  a.motions = make(map[Direction] * Motion) 
+  return a 
+}
+
+// Adds an existing Motion to this action, in the given direction.
+func (a * Action) Add(direction Direction, motion * Motion) {
+  // set the motion in all possibly corresponding directories  
+  if direction.Is(NORTH) { a.motions[NORTH] = motion }
+  if direction.Is(EAST)  { a.motions[EAST]  = motion }
+  if direction.Is(SOUTH) { a.motions[SOUTH] = motion }
+  if direction.Is(WEST)  { a.motions[WEST]  = motion }
+}
+
+// Gets the motion that corresponds with the given direction.
+func (a * Action) Get(direction Direction) (* Motion) {
+  motion, ok := a.motions[direction]
+  if !ok { return nil }
+  return motion
+}
+
+// Activity is the type of action a sprite is engaging in
+type Activity int
+
+const (
+  STAND = Activity(iota)
+  WALK
+  RUN
+  ATTACK
+  STRUCK
+  KNEEL
+  SWOON
+)
+
+
+// A Fragment is a part of a sprite. Sprites consist of one or more 
+// fragments that move together but can move separately.
+// Useful, for example, for a player character who holds a weapon, 
+// etc 
+type Fragment struct {
+  offset  Offset        // Offset of the fragment relative to the sprite 
+  hidden  bool
+  actions map[Activity] Action
+}
+
+
+// A sprite is a visual, mobile representation of a game object.
+type Sprite struct {
+  id int                        // Sprite ID  
+  fragments map[int] * Fragment // Fragments the sprite consists of 
+  Offset
+  // Offset of the Sprite with regards to the current Map
+  layer, order int
+  // Layer the sprite is on, and it's drawing order 
+}
+
+
+// A layer is a single layer of tiles in a Map
 type Layer struct {
   // width and height in number of tiles
   w, h int
@@ -141,14 +333,18 @@ type Layer struct {
   tilewide, tilehigh int
   // Real height and withd in pixels
   realhigh, realwide int
+  // the sprites that are present on this layer of the map
+  // This is a set of pointers, because a sprite can be
+  // present in several layers 
+  sprites map[int] Sprite  
 }
 
 func NewLayer(w, h, tw, th int) (* Layer) {
   layer        := &Layer{}
-  layer.w 	= w
-  layer.h 	= h
+  layer.w   = w
+  layer.h   = h
   layer.TileSet = NewTileSet(tw, th)
-  layer.tiles 	= make([][]*Tile, layer.h)
+  layer.tiles   = make([][]*Tile, layer.h)
   for y := 0 ; y < h ; y++ {
     layer.tiles[y] = make([]*Tile, layer.w)
   }
@@ -209,9 +405,9 @@ func (l * Layer) DrawCamera(screen * sdl.Surface, cam * Camera) {
       txdex  := txstart
       for txdex < txstop {
         drawx   += l.tilewide        
-	// get the tile at this tile index
+  // get the tile at this tile index
         aidtile := l.Get(txdex, tydex) 
-	aidtile.Draw(screen, drawx, drawy) 
+  aidtile.Draw(screen, drawx, drawy) 
         txdex += 1
       }
       tydex  += 1
@@ -224,47 +420,20 @@ func (l * Layer) Draw(screen * sdl.Surface, x, y int) {
   l.DrawCamera(screen, cam)
 }
 
-// A direction is a direction in which a Sprite is moving
-type Direction int
 
-const (
-  ALL_DIRECTIONS	= Direction(iota)
-  NORTH 		
-  EAST
-  SOUTH
-  WEST
-)
-
-// An animation is a single set of frames which are displayed sequentially 
-// when the sprite  performs an action in a given direction
-type Animation struct {
-  frames 	     []*Frame
-  active   	       *Frame
-  size, capacity 	int
-  index			int
-  direction		Direction
-  next			map[int] int
-}
-
-// An action is a set of animations which the sprite
-// can perform in several directions.
-type Action struct {
-  animations map[Direction] Animation
-}
-
-
-
-// A tile map consists of different layers
-type TileMap struct {
+// A Map consists of different Layers
+type Map struct {
   // The layers
   layers [] *Layer;
   // Layers that are in the tile map and that can be in the tile map
   size, capacity int;  
+  // amount of layers and capacity 
+  // Sprites, by id 
 }
 
-// Makes a new map with the given amount of layers
-func NewTileMap(size int) (* TileMap) {
-  tm 	   := &TileMap{}
+// Makes a Map with the given amount of layers
+func NewMap(size int) (* Map) {
+  tm 	     := new(Map)
   tm.size   = size
   tm.layers = make([]*Layer, tm.size)
   return tm
