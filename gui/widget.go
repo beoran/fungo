@@ -16,20 +16,17 @@ func (w * Widget) Add(child * Widget) (*Widget) {
   return w
 }
 
-func (w * Widget) Each() (<-chan *Widget) {
-  out := make(chan *Widget)
-  itr := func() {
-    for child := range w.children.Iter() {
-      out <- child.(*Widget)
-    }
+func (w * Widget) Each(block func(Any)){  
+  for child := range w.children.Iter() {
+      block(child.(*Widget))
   }
-  go itr()
-  return out 
 }
 
-func (w * Widget) SelfAndEachChild() (chan *Widget) {
+func (w * Widget) SelfAndEachChild(block func(Any)) {
+  /*
   result := make(chan *Widget)
   return result 
+  */
 }
 
 func (w * Widget) Send(msg Message, args...) (Object) {

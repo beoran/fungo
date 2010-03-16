@@ -173,11 +173,16 @@ type Joysticks struct {
 }
 
 const (
-  Active        = Message(sdl.ACTIVEEVENT)
-  KeyDown       = Message(sdl.KEYUP)
-  KeyUp         = Message(sdl.KEYDOWN)
-  MouseMotion   = Message(sdl.MOUSEMOTION)
-  Quit          = Message(sdl.QUIT)
+  Active        	= Message(sdl.ACTIVEEVENT)
+  KeyDown       	= Message(sdl.KEYUP)
+  KeyUp         	= Message(sdl.KEYDOWN)
+  MouseMotion   	= Message(sdl.MOUSEMOTION)
+  MouseButtonDown   	= Message(sdl.MOUSEBUTTONDOWN)
+  MouseButtonUp   	= Message(sdl.MOUSEBUTTONUP)
+  JoyAxisMotion		= Message(sdl.JOYAXISMOTION)
+  JoyButtonUp		= Message(sdl.JOYBUTTONUP)
+  JoyButtonDown		= Message(sdl.JOYBUTTONDOWN)
+  Quit          	= Message(sdl.QUIT)
 )
 
 
@@ -247,20 +252,22 @@ func (h * Hanao) Init(screen * sdl.Surface) {
   h.focuscursor    = LoadImage("data/joystick_0.png")
   // Cursor for focusing
   // XXX: Set up handlers
-  h.Object.DefineMethod(Quit, OnQuit)
-  h.Object.DefineMethod(KeyDown, OnKeyDown)
-  h.Object.DefineMethod(KeyUp, OnKeyUp)
-  h.Object.DefineMethod(MouseMotion, OnMouseMotion)
+  h.Object.DefineMethod(Quit		, OnQuit)
+  h.Object.DefineMethod(KeyDown		, OnKeyDown)
+  h.Object.DefineMethod(KeyUp		, OnKeyUp)
+  h.Object.DefineMethod(MouseMotion	, OnMouseMotion)
+  h.Object.DefineMethod(MouseButtonDown	, OnMouseButtonDown)
+  h.Object.DefineMethod(MouseButtonUp	, OnMouseButtonUp)
 }  
 
 // Sends events to every widget interested in it
 func (h * Hanao) sendToWidgets(message Message, args ...) { 
-  for widget := range h.main.SelfAndEachChild() { 
-    if ! widget.Active() { continue }
-    if widget.Ignore(message) { continue }
-    res := widget.Send(message, args)
-    if res == nil { break }
-  } 
+  h.main.SelfAndEachChild( func(w Any) {
+    widget := w.(*Widget)
+    if ! widget.Active() { return }
+    if widget.Ignore(message) { return }
+    widget.Send(message, args)
+  })
 }
 
 // Event handlers
@@ -319,7 +326,7 @@ func OnKeyDown(h * Hanao, event * sdl.Event) {
   fmt.Println("keyup", kevent, "text:", text)
   // text   := "" // CleanupUnicode(kevent)
   // keyboard.press(event.sym, event.mod, text)
-  // h.sendToWidgets(KeyDown, kevent.Keysym, kevent.Keysym.Mod, text)
+  h.sendToWidgets(KeyDown, kevent.Keysym(), kevent.Keysym().Mod(), text)
 }
     
 // Called when key is released
@@ -341,6 +348,7 @@ func OnMouseMotion(h * Hanao, event * sdl.Event) {
   h.Mouse.Move(mevent.X(), mevent.Y())
   fmt.Println("motion", h.Mouse.X, h.Mouse.Y)
 }
+
 /*
     old_x , old_y     = @mouse.x , @mouse.y
       @mouse.move(event.x, event.y)
@@ -360,9 +368,28 @@ func OnMouseMotion(h * Hanao, event * sdl.Event) {
       // send_to_interested(:on_mouse_move_to, event.x, event.y, old_x, old_y)
 */
 
-    
+
+// Called when the mouse button is down  
+func OnMouseButtonDown(h * Hanao, event * sdl.Event) {
+  mevent := event.MouseButton();
+  h.Mouse.Move(mevent.X(), mevent.Y())
+  fmt.Println("mouse press", h.Mouse.X, h.Mouse.Y, mevent.Button())
+}
+
+// Called when the mouse button is up
+func OnMouseButtonUp(h * Hanao, event * sdl.Event) {
+  mevent := event.MouseButton()  
+  if mevent.Wheel() { OnMouseScroll(h, event) }
+  
+  h.Mouse.Move(mevent.X(), mevent.Y())
+  // h.Mouse.Release(mevent.Button())
+  fmt.Println("mouse release", h.Mouse.X, h.Mouse.Y, mevent.Button())
+}
+
 // Called when the mouse wheel is scrolled
 func OnMouseScroll(h * Hanao, event * sdl.Event) {
+  mevent := event.MouseButton()
+  fmt.Println("mouse scroll", h.Mouse.X, h.Mouse.Y, mevent.Button())
 }
 /*
       widget = @hovered.first

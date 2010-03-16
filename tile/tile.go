@@ -251,7 +251,7 @@ func (f * Motion) Add(frame Frame) (bool) {
   return true
 }
 
-// Draws the motion's active bitmat at the given coordinates
+// Draws the motion's active bitmap at the given coordinates
 func (m * Motion) Draw(screen * sdl.Surface, x, y int) {
   if m == nil { return } // don't blit if the tile is nil.
   active := m.active
@@ -312,8 +312,11 @@ const (
 type Fragment struct {
   offset  Offset        // Offset of the fragment relative to the sprite 
   hidden  bool
-  actions map[Activity] Action
+  actions map[Activity] *Action
+  activity Activity     // Current activity of this fragment
+  direction Direction   // Current direction of this fragment
 }
+
 
 
 // A sprite is a visual, mobile representation of a game object.
@@ -322,8 +325,10 @@ type Sprite struct {
   fragments map[int] * Fragment // Fragments the sprite consists of 
   Offset
   // Offset of the Sprite with regards to the current Map
-  layer, order int
-  // Layer the sprite is on, and it's drawing order 
+  layer * Layer
+  // Layer the sprite is on, 
+  z, order int
+  // z position and drawing order 
 }
 
 

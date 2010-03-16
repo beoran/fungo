@@ -202,6 +202,23 @@ func (e * MouseButtonEvent) Y() (int) {
   return int(e.y)
 }
 
+// Returns true if the button event is in reality a mouse wheel scroll
+// event. This will probably disappear in SDL1.3, and we'll get
+// something like a MouseScrolled event in stead.
+func (e * MouseButtonEvent) Wheel() (bool) {
+  return e.Up() || e.Down()
+}
+
+func (e * MouseButtonEvent) Up() (bool) {
+  if e.Button() == BUTTON_WHEELUP { return true } 
+  return false
+}
+
+func (e * MouseButtonEvent) Down() (bool) {
+  if e.Button() == BUTTON_WHEELDOWN { return true } 
+  return false
+}
+
 // Type of the event
 func (e * JoyAxisEvent) Type() (byte) {
   return GetType(ptr(e))  

@@ -180,17 +180,14 @@ func TestSurface() {
   
   
   start1 := sdl.GetTicks()
-  repeats := uint32(1000)
-  for i:= uint32(0) ; i <  repeats ; i++ { 
-    layer.Draw(screen, 35, 35)   
-    layer.Draw(screen, 35, 35)   
-    layer.Draw(screen, 35, 35)   
-    layer.Draw(screen, 35, 35)
+  repeats := int(1000)
+  for i:= int(0) ; i <  repeats ; i++ { 
+    layer.Draw(screen, i - 64, i - 64)   
     screen.Flip()
   }    
   stop1 := sdl.GetTicks()
   delta := stop1 - start1
-  fps   := repeats * 1000 / delta
+  fps   := int(repeats) * 1000 / int(delta)
   fmt.Println("Repeats delta fps:", repeats, delta, fps)
   img.BlitTo(screen, 20, 20)  
   rand.Seed(time.Nanoseconds())
