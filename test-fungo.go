@@ -177,10 +177,8 @@ func TestSurface() {
   }
   
 
-  
-  
   start1 := sdl.GetTicks()
-  repeats := int(1000)
+  repeats := int(1)
   for i:= int(0) ; i <  repeats ; i++ { 
     layer.Draw(screen, i - 64, i - 64)   
     screen.Flip()

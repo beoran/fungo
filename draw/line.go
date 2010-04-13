@@ -297,7 +297,7 @@ func (s * Surface) PlotBezier(x1, y1, w, p0, p1, p2 int, color uint32) {
   fp2 := float64(p2)
   calc := func(x float64) (float64) {
     x   = (x - fx1) / (fx2 - fx1)
-    y   := QuadraticBezier(x, fp0, fp1, fp2) 
+    y  := QuadraticBezier(x, fp0, fp1, fp2) 
     return y + fy1
   }
   s.LinePlot(x1, x1 + w, 1.0, color, calc)
