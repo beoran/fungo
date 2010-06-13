@@ -8,6 +8,7 @@ include $(GOROOT)/src/Make.$(GOARCH)
 all: libs test-fungo test-gui test-midi
 
 libs:
+	make -C x install
 	make -C sdl install
 	make -C draw install
 	make -C gui install

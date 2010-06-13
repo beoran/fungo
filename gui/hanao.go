@@ -91,7 +91,8 @@ func Send(m Message, args ...Any) (Any) {
   if !ok { return nil }
   action := obj.GetMethod(m)
   if action == nil { return nil }
-  return DynamicCall(action, args)
+  DynamicCall(action, args)
+  return nil
 } 
 
 
