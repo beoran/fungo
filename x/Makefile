@@ -6,7 +6,8 @@ include $(GOROOT)/src/Make.$(GOARCH)
 
 TARG=fungo/x
 
-GOFILES:=protocol.go
+GOFILES:=basic.go connect.go xproto.go
+#protocol.go
 CLEANFILES+=x
 
 include $(GOROOT)/src/Make.pkg
