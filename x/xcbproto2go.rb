@@ -13,18 +13,33 @@ def get_attr(el, attr)
   return el.attributes[attr]
 end
 
+ 
+
+# Returns true if a name is all uppercase
+def all_upcase?(name)
+  return name == name.upcase
+end
 
 # Gets the name. Corrects it so itt's in line with Go style, mostly.  
 def get_name(el)
   name = get_attr(el, "name")
-  return name if !name # no name, so nothioing else to do
-  return name if name == name.upcase # all upcase name is fine
+  return name if !name # no name, so nothing else to do
+  return name if all_upcase?(name) # all upcase name is fine
   newname = name.split('_').map() do |val|
     val[0] = val[0].upcase
     val
   end.join
   # Split on any underscores, capitalize, and join again.   
   return newname
+end
+
+# Gets the type of a list of such. Gandles problematical cases like 
+# void
+def get_type(el)
+  type = get_attr(el, 'type')
+  return type if !type # no type, so nothing else to do
+  return '[]BYTE' if type == 'void' 
+  return type
 end
 
 # outputs a type definition without a struct
@@ -42,9 +57,9 @@ def struct(out, name, fields)
 end
 
 # generates a field line for go from field element.
-def make_field(el)  
+def make_field(el)
   name = get_name(el)
-  type = get_attr(el, "type")  
+  type = get_type(el)
   comm = ""
   enum =  get_attr(el, "enum")
   comm = "  // Use constants starting with #{enum}" if enum 
@@ -61,21 +76,24 @@ end
 # generates a field line for go from a list element.
 def make_list(el)
   name    = get_name(el)
-  type    = get_attr(el, "type")
+  type    = get_type(el)
   value   = get_value(el)
   value ||= ''  
      
   if type=='char' # list of char -> STRING8
     return "  #{name.ljust(PAD)}  STRING8"
   end
-  return "  #{name.ljust(PAD-2)}  #[#{value}]#{type}"
+  return "  #{name.ljust(PAD-2)}  [#{value}]#{type}"
 end
  
 # Processes structs
-def process_struct(el, out, name = nil)
+def process_struct(el, out, name = nil, extra_fields = nil)
   name  ||= get_name(el)
   pad     = 1 # amount of padding field added
   fields  = [] # field data
+  if extra_fields # add extra fields first
+    fields += extra_fields 
+  end
   el.elements.each do | field |
     subname = field.name
     case subname
@@ -86,6 +104,8 @@ def process_struct(el, out, name = nil)
         pad    += 1
       when 'list'
         fields << make_list(field)
+      when 'reply' # process replies for request structs
+        process_reply(el, field, out)
       else 
         warn "Unknown sub-element #{subname} #{field} in a struct"
     end
@@ -115,7 +135,7 @@ def make_item_value(sub)
     subname = sub.name
     case subname 
       when 'value'
-        return sub.text.strip.to_i
+        return sub.text.strip.to_i.to_s
       when 'bit'
         val = 1 << sub.text.strip.to_i
         hex = "0x" + val.to_s(16).rjust(8,'0')
@@ -132,7 +152,7 @@ def get_value(el)
     val = make_item_value(sub)
     return val if val
   end
-  retrun nil  
+  return nil  
 end
 
 # 
@@ -154,8 +174,14 @@ def make_item(el, enumname)
     val  += 1 # one more than last value
     val   = val.to_s
   end
-  @last_value = val
-  return "  #{(enumname + name).ljust(PAD)}  = #{val}"    
+  @last_value = val.to_s
+  # Make the enum name similar to the individual name style
+  wholename   = enumname + name
+  if all_upcase?(name)
+    wholename = enumname.upcase + '_' + name
+  end
+  
+  return "  #{wholename.ljust(PAD)}  = #{val}"    
 end
  
 
@@ -195,17 +221,57 @@ def const(out, name, value)
 end
 
 def process_union(el, out)
+  last = nil
+  el.elements.each do | item |
+    last = make_field(item)
+  end
+  out.puts "// This struct is generated from a union. "
+  out.puts "// Only the last field is added. Probably it will not work."
+  if last    
+    struct(out, get_name(el), [last])      
+  end
 end
 
 def process_event(el, out)
-  @events ||= [] # must keep track of events for eventcopy 
-  @events << el  
+  name      = get_name(el) + 'Event'
+  process_struct(el, out, name)
+  constname = get_name(el) + 'EventCode'
+  constval  = get_attr(el, 'number')
+  const(out, constname, constval)
+  out.puts  
+  @events ||= {} # must keep track of events for eventcopy 
+  @events[get_name(el)] = el 
 end
 
 def process_eventcopy(el, out)
+  name      = get_name(el) + 'Event'
+  ref       = get_attr(el, 'ref')
+  copied    = @events[ref]
+  if !copied
+    warn "Cannot coppy event from #{ref} to #{name}"
+    return
+  end
+  process_struct(copied, out, name)
+  constname = get_name(el) + 'EventCode'
+  constval  = get_attr(el, 'number')
+  const(out, constname, constval)  
+end
+
+# Processes replies for a request.
+def process_reply(request, reply, out) 
+  name     = get_name(request) + 'Reply'
+  process_struct(reply, out, name) 
+  # Recurse once more
 end
 
 def process_request(el, out)
+  name      = get_name(el) + 'Request'
+  extra     = "  Opcode".ljust(PAD) + "    CARD8"
+  process_struct(el, out, name, [extra])
+  constname = get_name(el) + 'Opcode'
+  constval  = get_attr(el, 'opcode')
+  const(out, constname, constval)
+  out.puts  
 end
 
 def process_error(el, out)
@@ -216,8 +282,7 @@ def process_error(el, out)
   const(out, constname, constval)
   out.puts
   @errors ||= {} # must keep track of errors for errorcopy 
-  @errors[get_name(el)] = el
- 
+  @errors[get_name(el)] = el 
 end
 
 def process_errorcopy(el, out)
@@ -239,25 +304,8 @@ end
 def define_basics(out)
   basics = <<-END_OF_BASICS
   package x
-
-  // Basic types
   
-  type VALUE        uint32
-  type BYTE         uint8
-  type INT8         int8
-  type INT16        int8
-  type INT32        int32
-  type CARD8        uint8
-  type CARD16       uint16
-  type CARD32       uint32
-  type XID          uint32
-  type BOOL         uint8
-  type STRING8    []CARD8
-  
-  // Used only for padding bytes
-  type PADDING      uint8
-  
-  // Generated Types
+  // Generated Types Follow below this line 
   
 END_OF_BASICS
   basics = basics.split("\n").map(&:strip).join("\n")
