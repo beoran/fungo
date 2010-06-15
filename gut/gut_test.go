@@ -2,6 +2,7 @@ package gut
 
 import "testing"
 import "fmt"
+import "bytes"
 // import "os"
 
 // Tests for fopen
@@ -27,3 +28,15 @@ func TestHomeDir(t * testing.T) {
   fmt.Println(dir)
 }
 
+func TestJoinDir(t * testing.T) {
+  dir := JoinDir("foo/", "bar")
+  if dir != "foo/bar" { t.Errorf("Dir names not joined correctly: %s", dir) }
+}
+
+func TestPack(t * testing.T) {
+  var i32 int32 = 12345678
+  bb := bytes.NewBufferString("")  
+  Pack(bb, i32)
+  b  := bb.Bytes()
+  fmt.Printf("%x %x %x %x\n", b[0], b[1], b[2], b[3])
+}
