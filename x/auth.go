@@ -25,7 +25,7 @@ func GetAuthorityHostname(hostname string) (string, os.Error) {
 
 // Finds the authority file, opens it, and returns it.  
 func GetAuthorityFile() (*os.File, os.Error) {
-  filename := os.Getenv("XAUTHOTITY")
+  filename := os.Getenv("XAUTHORITY")
   if len(filename) == 0 { 
     home := gut.HomeDir()
     if len(home) == 0 {

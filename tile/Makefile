@@ -6,7 +6,7 @@ include $(GOROOT)/src/Make.$(GOARCH)
 
 TARG=fungo/tile
 
-GOFILES:=tile.go particle.go
+GOFILES:=tile.go # particle.go
 # CGOFILES:=
 
 CLEANFILES+=tile

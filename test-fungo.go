@@ -154,11 +154,20 @@ func TestSurface() {
   }
   // screen.Unlock()
   stop := sdl.GetTicks()
-  fmt.Println("1 screen of 400 px drawn in ", stop - start)
-  frame := sdl.LoadSurface("data/tile_aqua.png")
+  fmt.Println("1 screen of 32x32 px drawn in ", stop - start)
+  frame := sdl.LoadSurface("data/tile_aqua_32.png")
   frame.Accellerate() // Very important, this one! ^_^
   defer frame.Free()
-  frame.BlitTo(screen, 20, 20)
+  
+  repeatsb := int(10000000)  
+  startb   := time.Nanoseconds()
+  for i    := int(0) ; i < repeatsb ; i++ { 
+    frame.BlitTo(screen, 20, 20)
+  }    
+  stopb := time.Nanoseconds()
+  deltab:= stopb - startb
+  fpsb  := float64(repeatsb) * float64(1000000000.0) / float64(deltab)
+  fmt.Println("Tile blit repeats delta fps:", repeatsb, deltab, fpsb)  
   screen.Flip()
   
   font := sdl.LoadTTFont("data/sazanami-gothic.ttf", 24)
@@ -177,15 +186,15 @@ func TestSurface() {
   }
   
 
-  start1 := sdl.GetTicks()
+  start1  := time.Nanoseconds()
   repeats := int(1)
   for i:= int(0) ; i <  repeats ; i++ { 
     layer.Draw(screen, i - 64, i - 64)   
     screen.Flip()
   }    
-  stop1 := sdl.GetTicks()
+  stop1 := time.Nanoseconds()
   delta := stop1 - start1
-  fps   := int(repeats) * 1000 / int(delta)
+  fps   := float64(repeats) * float64(1000000000.0) / float64(delta)
   fmt.Println("Repeats delta fps:", repeats, delta, fps)
   img.BlitTo(screen, 20, 20)  
   rand.Seed(time.Nanoseconds())

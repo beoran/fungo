@@ -151,6 +151,11 @@ func ConnectLocal() (*Connection) {
   return c
 }
 
+// String format
+func (c * Connection) String() string {
+  return fmt.Sprintf("Conection: %s : %s : %s : %s", c.Conn, c.Error, c.Display, c.Host)
+}
+
 // Sets this connection to error status
 func (c * Connection) Fail(message string) (*Connection) {
   c.Error = os.NewError(message)
@@ -182,7 +187,7 @@ func (c * Connection) Authenticate() (*Connection) {
   if c.Failed() { return c }
   // Get authentication data
   auth, err := ReadAuthority(c.Host, c.Display)
-  if err != nil { return c }
+  if err != nil { return c.Fail(err.String()) }
   
   // Assume that the authentication protocol is "MIT-MAGIC-COOKIE-1".
   if auth.Name != "MIT-MAGIC-COOKIE-1" || len(auth.Data) != 16 {
@@ -207,7 +212,8 @@ func (c * Connection) Authenticate() (*Connection) {
     return c.Fail(fmt.Sprintf("x protocol version mismatch: %d.%d", 
     reply.Major, reply.Minor))
   }
-  println(reply)
+  
+  fmt.Println(reply, reply.Code)
   /*
   buf = make([]byte, int(dataLen)*4+8, int(dataLen)*4+8)
   copy(buf, head)
