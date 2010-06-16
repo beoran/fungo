@@ -18,7 +18,7 @@ type CARD16       uint16
 type CARD32       uint32
 type XID          uint32
 type BOOL         uint8
-type STRING8      string
+type STRING8     []byte
 
 // Used only for padding and unused bytes
 type PADDING      uint8
@@ -88,6 +88,10 @@ func PackBE(writer io.Writer, args... interface{}) (os.Error) {
 // Unpacks using Lyttle Endian byte order
 func PackLE(writer io.Writer, args... interface{}) (os.Error) {
   return PackOrder(writer, binary.LittleEndian, args);
+}
+
+func (s8 STRING8) String() string {
+  return (string)(([]byte)(s8))
 }
 
 

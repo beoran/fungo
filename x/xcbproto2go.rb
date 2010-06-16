@@ -111,7 +111,12 @@ def process_struct(el, out, name = nil, extra_fields = nil)
     end
   end  
   struct(out, name, fields)
-      
+  #
+  # After outputting the struct, generate ToX and FromX, 
+  # that either write the struct to X or read it in FromX
+  # Als generate String() as it's useful for debuging
+  # make_to_x(el, out)
+  # make_to_y(el, out)
 end
 
 def process_xidtype(el, out)

@@ -118,7 +118,7 @@ type ConnectionOKReply struct {
   ResourceIDBase            CARD32
   ResourceIDMask            CARD32
   MotionBufferSize          CARD32
-  VendorLength              CARD32
+  VendorLength              CARD16
   MaximumRequestLength      CARD16
   NumberOfScreens           CARD8
   NumberOfFormats           CARD8
@@ -139,6 +139,7 @@ type ConnectionOKReply struct {
 func ReadPadding(r io.Reader, size int) (os.Error) {
   padsize := size % 4
   if padsize == 0 { return nil }
+  println("padsize", padsize)
   buf := make([]byte, padsize)
   _, err := r.Read(buf)
   return err
@@ -148,6 +149,7 @@ func ReadPadding(r io.Reader, size int) (os.Error) {
 
 // reads in a string8 with the given length.   
 func STRING8FromX(r io.Reader, size int) (STRING8, os.Error) {
+  println("size", size)
   buf := make([]byte, size)
   _ , err := r.Read(buf)
   err  = ReadPadding(r, size) 
@@ -156,17 +158,42 @@ func STRING8FromX(r io.Reader, size int) (STRING8, os.Error) {
 
 // reads in the non-generic part of the ConnectionOKReply
 func (i * ConnectionOKReply) FromX(r io.Reader) (os.Error) {
-  err := Unpack(r, i.Release        , i.ResourceIDBase, 
-                   i.ResourceIDMask , i.MotionBufferSize, 
-                   i.VendorLength   , i.MaximumRequestLength,
-                   i.NumberOfScreens, i.NumberOfFormats,
-                   i.ImageByteOrder , i.BitmapFormatScanLineUnit,
-                   i.BitmapFormatScanLineUnit,
-                   i.BitmapFormatScanLinePad,
-                   i.MinKeycode,
-                   i.MaxKeyCode,
-                   i.Unused)
+  err := Unpack(r, &i.Release        		, 
+		   &i.ResourceIDBase 		, 
+                   &i.ResourceIDMask 		,	 
+		   &i.MotionBufferSize		,	 
+                   &i.VendorLength   		, 
+		   &i.MaximumRequestLength	,
+                   &i.NumberOfScreens		, 
+		   &i.NumberOfFormats		,
+                   &i.ImageByteOrder 		, 
+		   &i.BitmapFormatScanLineUnit	,
+                   &i.BitmapFormatScanLineUnit	,
+                   &i.BitmapFormatScanLinePad	,
+                   &i.MinKeycode		,
+                   &i.MaxKeyCode		,
+                   &i.Unused)
+  if err       != nil { return err }
+  fmt.Println(*i)
   i.Vendor, err = STRING8FromX(r, int(i.VendorLength))
+  if err       != nil { return err }  
+  i.PixmapFormats  = make([]FORMAT, i.NumberOfFormats)  
+  for index    := CARD8(0) ; index < i.NumberOfFormats ; index++ {
+    i.PixmapFormats[index] = FORMAT{}
+    err = (&i.PixmapFormats[index]).FromX(r)
+    if err != nil { return err }
+  }
+  
+  
+  return err
+}
+
+func (f * FORMAT) FromX(r io.Reader) (os.Error) {
+  err := Unpack(r,
+		&f.Depth,
+		&f.BitsPerPixel,
+		&f.ScanlinePad,
+		&f.Padding1)		
   return err
 }
 
@@ -246,8 +273,8 @@ func (c * Connection) Authenticate() (*Connection) {
   info.Byteorder  = ConnectionSetupLSB
   info.Major      = 11
   info.Minor      = 0
-  info.Name       = (STRING8)(auth.Name)
-  info.Data       = (STRING8)(auth.Data)
+  info.Name       = (STRING8)(([]byte)(auth.Name))
+  info.Data       = (STRING8)(([]byte)(auth.Data))
   // set up connection information
   println(info.Name)
   println(info.Data)
@@ -267,12 +294,13 @@ func (c * Connection) Authenticate() (*Connection) {
   
   fmt.Println(reply, reply.Code)
   if reply.Code != 1 { 
-    return c.Fail("Cionnection failed");  
+    return c.Fail("Connection failed");  
   } 
   
   okreply := &ConnectionOKReply{}
   okreply.ConnectionGenericReply = *reply
-  okreply.FromX(c)
+  c.Error  = okreply.FromX(c)
+  if c.Error != nil { return c } 
   fmt.Println(okreply.Vendor, okreply)
   
   /*

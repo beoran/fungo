@@ -36,11 +36,13 @@ func TestJoinDir(t * testing.T) {
 type Record struct {
   Ui32   uint32
   Ui16   uint16
+  Buf	 []byte
+  Str	 string
 }  
   
 
 func TestPack(t * testing.T) {
-  rec := &Record{12345, 0}
+  rec := &Record{12345, 0, nil, "hi!"}
   bb := bytes.NewBufferString("")  
   PackBE(bb, rec.Ui32)
   b  := bb.Bytes()
@@ -48,5 +50,13 @@ func TestPack(t * testing.T) {
   b1 := bytes.NewBuffer(b)
   err := UnpackBE(b1, &rec.Ui16)
   fmt.Printf("%s %d\n", err, rec.Ui16)
+  b3 := bytes.NewBufferString("")  
+  rec2 := &Record{123, 16, nil, "hi!"}
+  rec2.Buf = make([]byte, rec2.Ui16)
+  rec2.Buf[0] = 12
+  rec2.Buf[1] = 34
+  err = Pack(b3, rec2)
+  fmt.Println(err, b3.Bytes())
+  
   
 }
