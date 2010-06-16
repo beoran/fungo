@@ -33,10 +33,20 @@ func TestJoinDir(t * testing.T) {
   if dir != "foo/bar" { t.Errorf("Dir names not joined correctly: %s", dir) }
 }
 
+type Record struct {
+  Ui32   uint32
+  Ui16   uint16
+}  
+  
+
 func TestPack(t * testing.T) {
-  var i32 int32 = 12345678
+  rec := &Record{12345, 0}
   bb := bytes.NewBufferString("")  
-  Pack(bb, i32)
+  PackBE(bb, rec.Ui32)
   b  := bb.Bytes()
   fmt.Printf("%x %x %x %x\n", b[0], b[1], b[2], b[3])
+  b1 := bytes.NewBuffer(b)
+  err := UnpackBE(b1, &rec.Ui16)
+  fmt.Printf("%s %d\n", err, rec.Ui16)
+  
 }

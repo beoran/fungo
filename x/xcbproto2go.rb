@@ -68,9 +68,9 @@ end
  
 # generates a padding line for go from padding element.
 def make_padding(el, count)
-  size = get_attr(el, size)
+  size = get_attr(el, "bytes")
   name = "Padding#{count}"  
-  return "  #{name.to_s.ljust(PAD-2)}  [#{size}]PADDING"
+  return "  #{name.to_s.ljust(PAD-3)}  [#{size}]PADDING"
 end
 
 # generates a field line for go from a list element.
@@ -78,7 +78,7 @@ def make_list(el)
   name    = get_name(el)
   type    = get_type(el)
   value   = get_value(el)
-  value ||= ''  
+  # value   = get_attr(el, 'bytes')
      
   if type=='char' # list of char -> STRING8
     return "  #{name.ljust(PAD)}  STRING8"

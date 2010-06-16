@@ -48,8 +48,8 @@ type AuthorityInfo struct {
 }
 
 func ReadSize16BEBytes(buf * bufio.Reader) ([]byte, os.Error) {
-  var size uint16
-  err    := gut.UnpackBE(buf, size)
+  var size uint16 = 0
+  err    := UnpackBE(buf, &size)
   if err != nil { return nil, err }
   result := make([]byte, size)
   _, err  = io.ReadFull(buf, result)
@@ -66,7 +66,7 @@ func ReadSize16BEString(buf * bufio.Reader) (string, os.Error) {
 // Reads in a single record of authority information from a bufio.Reader
 func ReadAuthorityInfo(buf * bufio.Reader) (*AuthorityInfo, os.Error) {
   info  := &AuthorityInfo{}
-  err   := gut.UnpackBE(buf, info.Family)
+  err   := gut.UnpackBE(buf, &info.Family)
   if err != nil {  return nil, err }
   // reads sized string
   info.Address, err = ReadSize16BEString(buf)
@@ -101,6 +101,10 @@ func ReadAuthority(hostname, display string) (* AuthorityInfo, os.Error) {
   for {
     info, err := ReadAuthorityInfo(buf)    
     if err != nil { return nil, err }
+    println(info.Family, familyLocal)
+    println(info.Address, hostname)
+    println(info.Display, display)
+    
     if info.Family  == familyLocal && 
        info.Address == hostname && 
        info.Display == display {

@@ -73,6 +73,18 @@ const ConnectionFailedCode        = ConnectionReplyCode(0)
 const ConnectionSuccessCode       = ConnectionReplyCode(1)
 const ConnectionAuthenticateCode  = ConnectionReplyCode(2)
 
+type GenericReply struct { 
+  Code          byte
+  Size          byte
+  Sequence      CARD16
+  Length        CARD32
+  Padding1  [24]PADDING 
+  // The padding is sometimes used as data in specific replies.
+  Data        []byte
+  // len(data) == Size * 4, often padded at the end
+}
+
+
 type ConnectionGenericReply struct {
   Code          ConnectionReplyCode
   ReasonLength  uint8
@@ -123,6 +135,41 @@ type ConnectionOKReply struct {
   Roots                     []SCREEN  
 }
 
+// Reads in padding and discards it. Padding size is based on size. 
+func ReadPadding(r io.Reader, size int) (os.Error) {
+  padsize := size % 4
+  if padsize == 0 { return nil }
+  buf := make([]byte, padsize)
+  _, err := r.Read(buf)
+  return err
+}  
+  
+  
+
+// reads in a string8 with the given length.   
+func STRING8FromX(r io.Reader, size int) (STRING8, os.Error) {
+  buf := make([]byte, size)
+  _ , err := r.Read(buf)
+  err  = ReadPadding(r, size) 
+  return (STRING8)(buf), err
+}
+
+// reads in the non-generic part of the ConnectionOKReply
+func (i * ConnectionOKReply) FromX(r io.Reader) (os.Error) {
+  err := Unpack(r, i.Release        , i.ResourceIDBase, 
+                   i.ResourceIDMask , i.MotionBufferSize, 
+                   i.VendorLength   , i.MaximumRequestLength,
+                   i.NumberOfScreens, i.NumberOfFormats,
+                   i.ImageByteOrder , i.BitmapFormatScanLineUnit,
+                   i.BitmapFormatScanLineUnit,
+                   i.BitmapFormatScanLinePad,
+                   i.MinKeycode,
+                   i.MaxKeyCode,
+                   i.Unused)
+  i.Vendor, err = STRING8FromX(r, int(i.VendorLength))
+  return err
+}
+
 // Pad a length to align l on a bytes.
 func PadLengthTo(l int, a int ) int { 
   return (l + (a-1)) & ^(a-1)
@@ -146,7 +193,7 @@ type Connection struct {
 func ConnectLocal() (*Connection) {
   c := &Connection{}
   c.Conn, c.Error = net.Dial("unix", "",  "/tmp/.X11-unix/X0");
-  c.Display       = ":0.0"
+  c.Display       = "0"
   c.Host          = "localhost"
   return c
 }
@@ -186,6 +233,7 @@ func (c * Connection) Close() (*Connection) {
 func (c * Connection) Authenticate() (*Connection) {
   if c.Failed() { return c }
   // Get authentication data
+  println("readauthority")
   auth, err := ReadAuthority(c.Host, c.Display)
   if err != nil { return c.Fail(err.String()) }
   
@@ -201,8 +249,12 @@ func (c * Connection) Authenticate() (*Connection) {
   info.Name       = (STRING8)(auth.Name)
   info.Data       = (STRING8)(auth.Data)
   // set up connection information
-  println(info)
+  println(info.Name)
+  println(info.Data)
+  println("write connection info")
+  
   c.Error         = info.ToX(c)
+  println(c.Error)
   if c.Error != nil { return c.Fail("Send ConnectionInfo Failed.") } 
   // send it to X
   reply := &ConnectionGenericReply{}
@@ -214,6 +266,15 @@ func (c * Connection) Authenticate() (*Connection) {
   }
   
   fmt.Println(reply, reply.Code)
+  if reply.Code != 1 { 
+    return c.Fail("Cionnection failed");  
+  } 
+  
+  okreply := &ConnectionOKReply{}
+  okreply.ConnectionGenericReply = *reply
+  okreply.FromX(c)
+  fmt.Println(okreply.Vendor, okreply)
+  
   /*
   buf = make([]byte, int(dataLen)*4+8, int(dataLen)*4+8)
   copy(buf, head)
